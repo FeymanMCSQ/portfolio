@@ -1,0 +1,21 @@
+# Quest Log
+
+| # | Name | Status | Summary |
+|---|------|--------|---------|
+| 01 | Movement Feel | ✅ done | Player object, momentum forward + lateral, parallax grid, speed-reactive visuals, admin panel |
+| 02 | Jump Feel | ✅ done | Speed-dependent arc, squash & stretch, shadow, landing ring, air control |
+| 03 | Obstacles | ✅ done | Ground (jump) + side (steer) obstacles, 60s survival win, R to restart, overlays |
+| 04 | Scoring & Combo | ✅ done | Distance score, ×1–×4 speed multiplier, near-miss bonus, combo counter, score on overlays |
+| 05 | Overclock | ✅ done | Cyan token spawns on track; collect → ×2 speed cap, ×2 score, 5s timer, edge vignette, screen flash |
+| 06 | Focus Mode | ✅ done | Amber meter fills while skating; SHIFT at 100% → 40% time scale for ~3.7s; edge vignette + HUD meter |
+| 07 | Patch Pulse | ✅ done | Green token arms player; next landing fires radius shockwave that clears nearby ground obstacles |
+| 08A | Side-view Terrain Foundation | ✅ done | Added connected terrain segments, terrain sampling, grounded player following, ramp launch, gap detach, simple terrain render |
+| 08B | Terrain Collision & Scoring | ✅ done | Terrain block collision, fall failure, terrain-aware token spawns, Patch Pulse terrain clears, block near-miss scoring |
+
+## Next quest candidates (not decided)
+
+- Quest 08 Phase C (visual/feel polish, terrain pattern tuning, remaining docs cleanup)
+- Difficulty curve (ramp up obstacle density / speed over time)
+- Coin / collectible row
+- Obstacle patterns (deliberate sequences, not purely random)
+- Portfolio shell (landing page, nav, about section around the game)
