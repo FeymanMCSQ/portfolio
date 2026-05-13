@@ -12,7 +12,7 @@ export const GAME_CONFIG = {
     height: 18,
 
     acceleration: 290,     // px/s² — tune: higher = more responsive snap
-    friction: 0.964,       // per-frame decay — ~3s from max to stop (0.964^60 ≈ 0.106/s)
+    friction: 0.993,       // per-frame decay — ~4s coast from max to stop (0.982^60 ≈ 0.34/s)
     maxSpeed: 680,         // px/s forward
   },
 
@@ -52,11 +52,11 @@ export const GAME_CONFIG = {
     pointsPerPx: 0.1,          // score per px traveled, before multiplier
     nearMissBonus: 50,         // base near-miss bonus before multiplier × combo scaling
     nearMissObstacleClearance: 34, // px above a terrain block that counts as a close clear
-    comboTimeout: 5.0,         // seconds without a near-miss before combo resets
+    comboTimeout: 5,         // seconds without a near-miss before combo resets
     // Speed-ratio thresholds for x2 / x3 / x4 (fraction of maxSpeed)
     tier2: 0.35,
     tier3: 0.65,
-    tier4: 0.90,
+    tier4: 0.9,
   },
 
   patchPulse: {
@@ -71,14 +71,14 @@ export const GAME_CONFIG = {
   focus: {
     fillRate: 0.12,           // meter gain per second × speedRatio — fills in ~8s at max speed
     drainRate: 0.27,          // meter loss per second while active — ~3.7s of slow-mo
-    timeScale: 0.40,          // physDt multiplier while active (0.4 = 40% speed)
+    timeScale: 0.4,          // physDt multiplier while active (0.4 = 40% speed)
     activationThreshold: 1.0, // must be fully charged to activate
     flashDuration: 0.12,      // brief amber screen flash on activation
   },
 
   overclock: {
-    duration: 5.0,           // seconds the effect lasts
-    speedMultiplier: 2.0,    // max speed cap multiplier during overclock
+    duration: 5,           // seconds the effect lasts
+    speedMultiplier: 2,    // max speed cap multiplier during overclock
     scoreMultiplier: 2,      // stacks with the speed-tier multiplier
     tokenRadius: 14,         // collection hitbox radius (adds to player half-dims)
     tokenSpacing: 3700,      // deterministic worldOffset gap between token spawns

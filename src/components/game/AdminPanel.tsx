@@ -145,7 +145,7 @@ const SECTIONS: Section[] = [
     summary: "Ground speed, acceleration, and coast-down feel.",
     sliders: [
       { key: "acceleration", target: "player", label: "Acceleration", min: 50, max: 600, step: 5, format: (v) => String(v) },
-      { key: "friction", target: "player", label: "Friction", min: 0.9, max: 0.998, step: 0.001, format: (v) => v.toFixed(3) },
+      { key: "friction", target: "player", label: "Coast", min: 0.9, max: 0.998, step: 0.001, format: (v) => `~${(Math.log(0.01) / (60 * Math.log(v))).toFixed(1)}s stop` },
       { key: "maxSpeed", target: "player", label: "Max Speed", min: 200, max: 1200, step: 10, format: (v) => `${v} px/s` },
     ],
   },
