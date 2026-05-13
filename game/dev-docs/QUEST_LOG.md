@@ -11,10 +11,11 @@
 | 07 | Patch Pulse | ✅ done | Green token arms player; next landing fires radius shockwave that clears nearby ground obstacles |
 | 08A | Side-view Terrain Foundation | ✅ done | Added connected terrain segments, terrain sampling, grounded player following, ramp launch, gap detach, simple terrain render |
 | 08B | Terrain Collision & Scoring | ✅ done | Terrain block collision, fall failure, terrain-aware token spawns, Patch Pulse terrain clears, block near-miss scoring |
+| 08C | Side-view Cleanup | ✅ done | Tokens/shockwaves use world coordinates, old track bounds removed, gap edges rendered, docs finalized |
 
 ## Next quest candidates (not decided)
 
-- Quest 08 Phase C (visual/feel polish, terrain pattern tuning, remaining docs cleanup)
+- Difficulty curve / terrain pattern tuning
 - Difficulty curve (ramp up obstacle density / speed over time)
 - Coin / collectible row
 - Obstacle patterns (deliberate sequences, not purely random)

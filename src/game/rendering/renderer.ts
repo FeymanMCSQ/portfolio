@@ -1,7 +1,9 @@
 import { GAME_CONFIG } from "../config/gameConfig";
-import type { GameState, OverclockToken, PatchPulseToken, Shockwave, TerrainSegment } from "../core/types";
+import type { GameState, Shockwave, TerrainSegment } from "../core/types";
 
 const { canvas: CV, player: P, world: W, jump: J, obstacles: OBS, overclock: OC, focus: FC, patchPulse: PP } = GAME_CONFIG;
+const VIEW_TOP = 64;
+const VIEW_BOTTOM = CV.height - 34;
 
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
@@ -41,9 +43,6 @@ function drawParallaxGrid(
   ctx: CanvasRenderingContext2D,
   state: GameState
 ): void {
-  const trackTop = P.trackTopY;
-  const trackBottom = P.trackBottomY;
-
   for (let layer = 0; layer < 3; layer++) {
     const spacing = W.gridSpacings[layer];
     const offset = (state.worldOffset * W.gridSpeeds[layer]) % spacing;
@@ -53,8 +52,8 @@ function drawParallaxGrid(
     ctx.beginPath();
 
     for (let x = CV.width - offset; x > -spacing; x -= spacing) {
-      ctx.moveTo(x, trackTop);
-      ctx.lineTo(x, trackBottom);
+      ctx.moveTo(x, VIEW_TOP);
+      ctx.lineTo(x, VIEW_BOTTOM);
     }
     ctx.stroke();
   }
@@ -79,7 +78,10 @@ function drawTerrainSegment(
   const x1 = segment.startX - state.worldOffset;
   const x2 = segment.endX - state.worldOffset;
   if (x2 < -80 || x1 > CV.width + 80) return;
-  if (segment.type === "gap") return;
+  if (segment.type === "gap") {
+    drawGapEdges(ctx, x1, x2, segment.startY, segment.endY);
+    return;
+  }
 
   ctx.fillStyle = "rgba(28, 36, 54, 0.92)";
   ctx.beginPath();
@@ -104,6 +106,23 @@ function drawTerrainSegment(
   if (segment.obstacle) {
     drawTerrainObstacle(ctx, state, segment);
   }
+}
+
+function drawGapEdges(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  x2: number,
+  y1: number,
+  y2: number
+): void {
+  ctx.strokeStyle = "rgba(255, 160, 70, 0.7)";
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x1, y1 + 34);
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2, y2 + 34);
+  ctx.stroke();
 }
 
 function drawTerrainObstacle(
@@ -148,8 +167,8 @@ function drawSpeedLines(
 
   const intensity = Math.min((speedRatio - 0.12) / 0.6, 1);
   const visibleCount = Math.floor(intensity * SPEED_LINE_COUNT);
-  const trackTop = P.trackTopY + 4;
-  const trackHeight = P.trackBottomY - P.trackTopY - 8;
+  const trackTop = VIEW_TOP + 8;
+  const trackHeight = VIEW_BOTTOM - VIEW_TOP - 48;
 
   for (let i = 0; i < visibleCount; i++) {
     const slot = SPEED_LINE_SLOTS[i];
@@ -531,20 +550,22 @@ function drawControlsHint(
 
 function drawTokens(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const token of state.tokens) {
-    if (token.x + OC.tokenRadius < 0 || token.x - OC.tokenRadius > CV.width) continue;
-    drawToken(ctx, token, state.timeElapsed);
+    const screenX = token.worldX - state.worldOffset;
+    if (screenX + OC.tokenRadius < 0 || screenX - OC.tokenRadius > CV.width) continue;
+    drawToken(ctx, screenX, token.y, state.timeElapsed);
   }
 }
 
 function drawToken(
   ctx: CanvasRenderingContext2D,
-  token: OverclockToken,
+  x: number,
+  y: number,
   t: number
 ): void {
   const pulse = 0.82 + 0.18 * Math.sin(t * 5.5);
 
   ctx.save();
-  ctx.translate(token.x, token.y);
+  ctx.translate(x, y);
 
   // Outer glow
   ctx.save();
@@ -591,20 +612,22 @@ function drawToken(
 
 function drawPatchTokens(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const token of state.patchTokens) {
-    if (token.x + PP.tokenRadius < 0 || token.x - PP.tokenRadius > CV.width) continue;
-    drawPatchToken(ctx, token, state.timeElapsed);
+    const screenX = token.worldX - state.worldOffset;
+    if (screenX + PP.tokenRadius < 0 || screenX - PP.tokenRadius > CV.width) continue;
+    drawPatchToken(ctx, screenX, token.y, state.timeElapsed);
   }
 }
 
 function drawPatchToken(
   ctx: CanvasRenderingContext2D,
-  token: PatchPulseToken,
+  x: number,
+  y: number,
   t: number
 ): void {
   const pulse = 0.82 + 0.18 * Math.sin(t * 4.8);
 
   ctx.save();
-  ctx.translate(token.x, token.y);
+  ctx.translate(x, y);
 
   // Outer glow ring
   ctx.save();
@@ -646,17 +669,18 @@ function drawPatchToken(
 
 function drawShockwaves(ctx: CanvasRenderingContext2D, state: GameState): void {
   for (const sw of state.shockwaves) {
-    drawShockwave(ctx, sw);
+    drawShockwave(ctx, state, sw);
   }
 }
 
-function drawShockwave(ctx: CanvasRenderingContext2D, sw: Shockwave): void {
+function drawShockwave(ctx: CanvasRenderingContext2D, state: GameState, sw: Shockwave): void {
   const t = sw.timer / sw.duration;          // 0 → 1
   const radius = sw.maxRadius * t;
   const alpha = (1 - t) * 0.85;
+  const screenX = sw.worldX - state.worldOffset;
 
   ctx.save();
-  ctx.translate(sw.x, sw.y);
+  ctx.translate(screenX, sw.y);
 
   // Flatten to look like a ground-level ring
   ctx.scale(1, 0.22);

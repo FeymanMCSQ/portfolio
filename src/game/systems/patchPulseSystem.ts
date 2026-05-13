@@ -8,19 +8,16 @@ const CV = GAME_CONFIG.canvas;
 const TOKEN_SURFACE_OFFSET = 50;
 
 export function updatePatchPulse(state: GameState, dt: number): void {
-  scrollTokens(state, dt);
+  cullTokens(state);
   collectToken(state);
   spawnToken(state);
   fireShockwave(state);
   tickShockwaves(state, dt);
 }
 
-function scrollTokens(state: GameState, dt: number): void {
-  for (const token of state.patchTokens) {
-    token.x -= state.player.speed * dt;
-  }
+function cullTokens(state: GameState): void {
   state.patchTokens = state.patchTokens.filter(
-    (t) => t.x + PP.tokenRadius > -20
+    (t) => t.worldX - state.worldOffset + PP.tokenRadius > -20
   );
 }
 
@@ -28,7 +25,8 @@ function collectToken(state: GameState): void {
   if (state.patchArmed) return;
   for (let i = state.patchTokens.length - 1; i >= 0; i--) {
     const token = state.patchTokens[i];
-    const dx = Math.abs(token.x - state.player.x);
+    const screenX = token.worldX - state.worldOffset;
+    const dx = Math.abs(screenX - state.player.x);
     const dy = Math.abs(token.y - state.player.y);
     if (dx < P.width / 2 + PP.tokenRadius && dy < P.height / 2 + PP.tokenRadius) {
       state.patchArmed = true;
@@ -46,7 +44,7 @@ function spawnToken(state: GameState): void {
   if (spawn) {
     state.patchTokens.push({
       id: state.nextPatchTokenId++,
-      x: spawn.screenX,
+      worldX: spawn.worldX,
       y: spawn.y,
     });
     state.nextPatchTokenAt =
@@ -71,7 +69,7 @@ function fireShockwave(state: GameState): void {
 
   state.shockwaves.push({
     id: state.nextShockwaveId++,
-    x: state.player.x,
+    worldX: playerWorldX,
     y: state.player.surfaceY,
     maxRadius: radius,
     timer: 0,
@@ -84,17 +82,17 @@ function fireShockwave(state: GameState): void {
 function tickShockwaves(state: GameState, dt: number): void {
   for (const sw of state.shockwaves) {
     sw.timer += dt;
-    sw.x -= state.player.speed * dt; // scroll with world
   }
   state.shockwaves = state.shockwaves.filter((sw) => sw.timer < sw.duration);
 }
 
-function findTokenSpawn(state: GameState): { screenX: number; y: number } | null {
+function findTokenSpawn(state: GameState): { worldX: number; y: number } | null {
   for (let offset = CV.width + 110; offset < CV.width + 720; offset += 80) {
-    const sample = sampleTerrainAt(state.terrainSegments, state.worldOffset + offset);
+    const worldX = state.worldOffset + offset;
+    const sample = sampleTerrainAt(state.terrainSegments, worldX);
     if (!sample.hasSurface) continue;
     return {
-      screenX: offset,
+      worldX,
       y: sample.y - TOKEN_SURFACE_OFFSET,
     };
   }

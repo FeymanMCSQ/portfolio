@@ -4,7 +4,7 @@
 
 ## Active quest
 
-None. Quest 08 Phase B (terrain collision and scoring) just completed. Ready for Phase C.
+None. Quest 08 Phase C (final side-view cleanup) just completed. Ready for the next quest.
 
 ## What exists and works
 
@@ -46,6 +46,9 @@ None. Quest 08 Phase B (terrain collision and scoring) just completed. Ready for
 - Jumping and ramp launch detach the player from the terrain; gravity drives airborne movement; falling through gaps detaches from ground
 - Renderer now draws a simple visible terrain surface and aligns the grounded player to terrain slope
 - Overclock and Patch Pulse tokens now spawn above sampled terrain instead of random lane Y positions
+- Tokens and shockwaves now store world X and render through `screenX = worldX - worldOffset`
+- Renderer uses side-view background bounds instead of old track top/bottom config
+- Gaps draw simple edge markers so missing terrain is readable
 - Admin panel now exposes terrain tuning values and no longer exposes obsolete lateral/lane obstacle controls
 
 
@@ -103,17 +106,17 @@ None. Quest 08 Phase B (terrain collision and scoring) just completed. Ready for
   overclockActive: boolean
   overclockTimer: number
   overclockFlash: number
-  tokens: OverclockToken[]
+  tokens: OverclockToken[] // worldX + y
   nextTokenAt: number
   nextTokenId: number
   focusMeter: number
   focusActive: boolean
   focusHeld: boolean
   patchArmed: boolean
-  patchTokens: PatchPulseToken[]
+  patchTokens: PatchPulseToken[] // worldX + y
   nextPatchTokenAt: number
   nextPatchTokenId: number
-  shockwaves: Shockwave[]
+  shockwaves: Shockwave[] // worldX + y
   nextShockwaveId: number
 }
 ```
@@ -124,7 +127,7 @@ None. Quest 08 Phase B (terrain collision and scoring) just completed. Ready for
 
 ## Pending / not yet built
 
-- Quest 08 Phase C: visual/feel polish, terrain pattern tuning, remaining docs cleanup
+- Difficulty scaling / terrain pattern tuning
 - Difficulty scaling (obstacle density doesn't ramp up yet)
 - High score persistence
 - Sound / music

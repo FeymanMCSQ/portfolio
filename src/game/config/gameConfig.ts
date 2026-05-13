@@ -14,9 +14,6 @@ export const GAME_CONFIG = {
     acceleration: 290,     // px/s² — tune: higher = more responsive snap
     friction: 0.964,       // per-frame decay — ~3s from max to stop (0.964^60 ≈ 0.106/s)
     maxSpeed: 680,         // px/s forward
-
-    trackTopY: 78,         // upper boundary of track area
-    trackBottomY: 422,     // lower boundary of track area
   },
 
   terrain: {

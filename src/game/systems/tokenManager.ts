@@ -8,18 +8,15 @@ const OC = GAME_CONFIG.overclock;
 const TOKEN_SURFACE_OFFSET = 54;
 
 export function updateTokens(state: GameState, dt: number): void {
-  // Scroll tokens left with the world
-  for (const token of state.tokens) {
-    token.x -= state.player.speed * dt;
-  }
-
-  // Remove tokens that scrolled off screen
-  state.tokens = state.tokens.filter((t) => t.x + OC.tokenRadius > -20);
+  state.tokens = state.tokens.filter(
+    (t) => t.worldX - state.worldOffset + OC.tokenRadius > -20
+  );
 
   // Check collection before spawning, so collection happens on the same frame
   for (let i = state.tokens.length - 1; i >= 0; i--) {
     const token = state.tokens[i];
-    const dx = Math.abs(token.x - state.player.x);
+    const screenX = token.worldX - state.worldOffset;
+    const dx = Math.abs(screenX - state.player.x);
     const dy = Math.abs(token.y - state.player.y);
     const hitW = P.width / 2 + OC.tokenRadius;
     const hitH = P.height / 2 + OC.tokenRadius;
@@ -39,7 +36,7 @@ export function updateTokens(state: GameState, dt: number): void {
     if (spawn) {
       state.tokens.push({
         id: state.nextTokenId++,
-        x: spawn.screenX,
+        worldX: spawn.worldX,
         y: spawn.y,
       });
       state.nextTokenAt =
@@ -78,12 +75,13 @@ function activateOverclock(state: GameState): void {
   );
 }
 
-function findTokenSpawn(state: GameState): { screenX: number; y: number } | null {
+function findTokenSpawn(state: GameState): { worldX: number; y: number } | null {
   for (let offset = CV.width + 80; offset < CV.width + 720; offset += 80) {
-    const sample = sampleTerrainAt(state.terrainSegments, state.worldOffset + offset);
+    const worldX = state.worldOffset + offset;
+    const sample = sampleTerrainAt(state.terrainSegments, worldX);
     if (!sample.hasSurface) continue;
     return {
-      screenX: offset,
+      worldX,
       y: sample.y - TOKEN_SURFACE_OFFSET,
     };
   }

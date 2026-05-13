@@ -49,19 +49,19 @@ export interface TerrainSegment {
 
 export interface OverclockToken {
   id: number;
-  x: number;
+  worldX: number;
   y: number;
 }
 
 export interface PatchPulseToken {
   id: number;
-  x: number;
+  worldX: number;
   y: number;
 }
 
 export interface Shockwave {
   id: number;
-  x: number;
+  worldX: number;
   y: number;
   maxRadius: number;
   timer: number;
