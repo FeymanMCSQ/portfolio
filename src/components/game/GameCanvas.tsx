@@ -37,6 +37,8 @@ export default function GameCanvas() {
           maxWidth: "100vw",
           height: "auto",
           outline: "1px solid rgba(60,80,160,0.4)",
+          touchAction: "none",
+          userSelect: "none",
         }}
       />
       <AdminPanel />

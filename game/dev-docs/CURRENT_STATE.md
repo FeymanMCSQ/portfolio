@@ -4,12 +4,13 @@
 
 ## Active quest
 
-None. Quest 09 (deterministic endless progress) just completed. Ready for the next quest.
+None. Quest 10 (obstacle visibility + touch controls) just completed. Ready for the next quest.
 
 ## What exists and works
 
 ### Movement (Quest 01 — done)
 - W/↑ accelerates, release decelerates with momentum
+- Touch: hold to accelerate; short tap queues jump; short tap on game-over queues restart
 - A/D/←/→ no longer moves the player vertically after the side-view Phase A refactor
 - Parallax grid (3 layers), speed lines, speed-reactive player colour/trail/glow
 - Localhost-only admin panel (⚙ button, bottom-right) — live-tunes all physics values
@@ -26,6 +27,7 @@ None. Quest 09 (deterministic endless progress) just completed. Ready for the ne
 - Falling below the canvas after a missed gap causes game over
 - Near-miss scoring now rewards close block clears instead of top-down lane threading
 - Patch Pulse shockwaves clear terrain-attached blocks inside the landing radius
+- Renderer paints all terrain first and all terrain-attached blocks second, so later slope fills cannot cover obstacle blocks
 - Old lane obstacle manager/types/rendering were removed from active code
 
 ### Deterministic endless progress (Quest 09 — done)
@@ -146,4 +148,3 @@ None. Quest 09 (deterministic endless progress) just completed. Ready for the ne
 - Difficulty scaling (obstacle density doesn't ramp up yet)
 - Sound / music
 - Portfolio pages around the game
-- Mobile / touch controls

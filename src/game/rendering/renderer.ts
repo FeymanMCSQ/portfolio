@@ -69,6 +69,10 @@ function drawTerrain(
   for (const segment of state.terrainSegments) {
     drawTerrainSegment(ctx, state, segment);
   }
+
+  for (const segment of state.terrainSegments) {
+    drawTerrainObstacle(ctx, state, segment);
+  }
 }
 
 function drawTerrainSegment(
@@ -104,9 +108,6 @@ function drawTerrainSegment(
   ctx.stroke();
   ctx.lineCap = "butt";
 
-  if (segment.obstacle) {
-    drawTerrainObstacle(ctx, state, segment);
-  }
 }
 
 function drawGapEdges(
@@ -138,6 +139,12 @@ function drawTerrainObstacle(
   const surfaceY = segment.startY + (segment.endY - segment.startY) * t;
   const angle = Math.atan2(segment.endY - segment.startY, segment.endX - segment.startX);
   const screenX = obstacle.worldX - state.worldOffset;
+  if (
+    screenX + obstacle.width < -80 ||
+    screenX - obstacle.width > CV.width + 80
+  ) {
+    return;
+  }
 
   ctx.save();
   ctx.translate(screenX, surfaceY);

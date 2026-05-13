@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from "../config/gameConfig";
-import type { GameState, PlayerState } from "../core/types";
+import type { GameState, PlayerState, TerrainSegment } from "../core/types";
 import type { InputState } from "./inputManager";
 import { crossedRampEnd, sampleTerrainAt } from "./terrainSystem";
 
@@ -125,18 +125,116 @@ function updateVerticalMovement(
     player.verticalVelocity += J.gravity * dt;
     player.y += player.verticalVelocity * dt;
 
-    if (surface.hasSurface && surface.segment && player.verticalVelocity >= 0) {
-      const footY = player.y + P.height / 2;
-      if (previousFootY <= surface.y && footY >= surface.y) {
-        player.y = surface.y - P.height / 2;
-        player.surfaceY = surface.y;
-        player.groundAngle = surface.angle;
-        player.currentSegmentId = surface.segment.id;
-        player.verticalVelocity = 0;
-        player.isGrounded = true;
-        player.landingTimer = 0;
-        player.justLanded = true;
-      }
+    const footY = player.y + P.height / 2;
+    const landing = findLandingSurface(
+      state.terrainSegments,
+      previousWorldX,
+      nextWorldX,
+      previousFootY,
+      footY,
+      player.verticalVelocity
+    );
+
+    if (landing) {
+      player.y = landing.y - P.height / 2;
+      player.surfaceY = landing.y;
+      player.groundAngle = landing.angle;
+      player.currentSegmentId = landing.segment.id;
+      player.verticalVelocity = 0;
+      player.isGrounded = true;
+      player.landingTimer = 0;
+      player.justLanded = true;
     }
   }
+}
+
+interface LandingSurface {
+  y: number;
+  angle: number;
+  segment: TerrainSegment;
+}
+
+function findLandingSurface(
+  segments: TerrainSegment[],
+  previousWorldX: number,
+  nextWorldX: number,
+  previousFootY: number,
+  footY: number,
+  verticalVelocity: number
+): LandingSurface | null {
+  if (verticalVelocity < 0) return null;
+
+  const dx = nextWorldX - previousWorldX;
+  if (Math.abs(dx) < 0.001) {
+    const surface = sampleTerrainAt(segments, nextWorldX);
+    if (
+      surface.hasSurface &&
+      surface.segment &&
+      previousFootY <= surface.y &&
+      footY >= surface.y
+    ) {
+      return {
+        y: surface.y,
+        angle: surface.angle,
+        segment: surface.segment,
+      };
+    }
+    return null;
+  }
+
+  const minX = Math.min(previousWorldX, nextWorldX);
+  const maxX = Math.max(previousWorldX, nextWorldX);
+
+  for (const segment of segments) {
+    if (segment.type === "gap") continue;
+    if (segment.endX < minX || segment.startX > maxX) continue;
+
+    const overlapStartX = Math.max(minX, segment.startX);
+    const overlapEndX = Math.min(maxX, segment.endX);
+    if (overlapEndX < overlapStartX) continue;
+
+    const startDiff = footAtX(
+      overlapStartX,
+      previousWorldX,
+      nextWorldX,
+      previousFootY,
+      footY
+    ) - surfaceYAtX(segment, overlapStartX);
+    const endDiff = footAtX(
+      overlapEndX,
+      previousWorldX,
+      nextWorldX,
+      previousFootY,
+      footY
+    ) - surfaceYAtX(segment, overlapEndX);
+
+    if (startDiff <= 0 && endDiff >= 0) {
+      const denom = endDiff - startDiff;
+      const t = Math.abs(denom) < 0.001 ? 1 : -startDiff / denom;
+      const landingX = overlapStartX + (overlapEndX - overlapStartX) * t;
+      return {
+        y: surfaceYAtX(segment, landingX),
+        angle: Math.atan2(segment.endY - segment.startY, segment.endX - segment.startX),
+        segment,
+      };
+    }
+  }
+
+  return null;
+}
+
+function footAtX(
+  x: number,
+  previousWorldX: number,
+  nextWorldX: number,
+  previousFootY: number,
+  footY: number
+): number {
+  const t = (x - previousWorldX) / (nextWorldX - previousWorldX);
+  return previousFootY + (footY - previousFootY) * t;
+}
+
+function surfaceYAtX(segment: TerrainSegment, x: number): number {
+  const t = (x - segment.startX) / (segment.endX - segment.startX);
+  return segment.startY + (segment.endY - segment.startY) * t;
 }

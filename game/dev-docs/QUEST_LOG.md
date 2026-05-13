@@ -13,6 +13,7 @@
 | 08B | Terrain Collision & Scoring | ✅ done | Terrain block collision, fall failure, terrain-aware token spawns, Patch Pulse terrain clears, block near-miss scoring |
 | 08C | Side-view Cleanup | ✅ done | Tokens/shockwaves use world coordinates, old track bounds removed, gap edges rendered, docs finalized |
 | 09 | Deterministic Endless Progress | ✅ done | Removed timed win, made token spawns deterministic, persisted last/best run progress, added HUD stats and world markers |
+| 10 | Obstacle Visibility + Touch Controls | ✅ done | Draw terrain blocks after terrain fills to prevent slope occlusion; added hold-to-accelerate and tap-to-jump touch input |
 
 ## Next quest candidates (not decided)
 
