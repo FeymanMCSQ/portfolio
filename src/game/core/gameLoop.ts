@@ -5,6 +5,7 @@ import { updateScore, checkNearMisses } from "../systems/scoringSystem";
 import { updateTokens, updateOverclock } from "../systems/tokenManager";
 import { updateFocus } from "../systems/focusSystem";
 import { updatePatchPulse } from "../systems/patchPulseSystem";
+import { recordRunProgress } from "../systems/progressStorage";
 import { renderFrame } from "../rendering/renderer";
 import { createInitialGameState } from "./gameState";
 import { GAME_CONFIG } from "../config/gameConfig";
@@ -50,11 +51,10 @@ export function createGameLoop(
       checkNearMisses(state);
 
       if (checkCollisions(state)) {
+        state.progress = recordRunProgress(state);
         state.phase = "gameOver";
-      } else if (state.timeElapsed >= GAME_CONFIG.obstacles.surviveDuration) {
-        state.phase = "won";
       }
-    } else if ((state.phase === "gameOver" || state.phase === "won") && restartPressed) {
+    } else if (state.phase === "gameOver" && restartPressed) {
       state = createInitialGameState();
       updateTerrain(state);
       state.phase = "playing";

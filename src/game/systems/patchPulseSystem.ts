@@ -48,9 +48,9 @@ function spawnToken(state: GameState): void {
       y: spawn.y,
     });
     state.nextPatchTokenAt =
-      state.worldOffset + PP.tokenSpacingMin + Math.random() * PP.tokenSpacingRandom;
+      state.nextPatchTokenAt + PP.tokenSpacing;
   } else {
-    state.nextPatchTokenAt = state.worldOffset + 450;
+    state.nextPatchTokenAt += 450;
   }
 }
 

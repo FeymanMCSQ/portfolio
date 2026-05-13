@@ -1,7 +1,8 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState, Shockwave, TerrainSegment } from "../core/types";
+import { sampleTerrainAt } from "../systems/terrainSystem";
 
-const { canvas: CV, player: P, world: W, jump: J, obstacles: OBS, overclock: OC, focus: FC, patchPulse: PP } = GAME_CONFIG;
+const { canvas: CV, player: P, world: W, jump: J, overclock: OC, focus: FC, patchPulse: PP } = GAME_CONFIG;
 const VIEW_TOP = 64;
 const VIEW_BOTTOM = CV.height - 34;
 
@@ -15,6 +16,7 @@ export function renderFrame(
   drawFocusEdge(ctx, state);        // amber vignette during focus — behind grid
   drawParallaxGrid(ctx, state);
   drawTerrain(ctx, state);
+  drawProgressMarkers(ctx, state);
   drawSpeedLines(ctx, state);
   drawTokens(ctx, state);           // overclock tokens behind player
   drawPatchTokens(ctx, state);      // patch pulse tokens behind player
@@ -27,7 +29,6 @@ export function renderFrame(
   drawControlsHint(ctx, state);
   drawOverclockFlash(ctx, state);   // full-screen flash — topmost game layer
   if (state.phase === "gameOver") drawGameOverOverlay(ctx, state);
-  if (state.phase === "won") drawWinOverlay(ctx, state);
 }
 
 // ─── Background ──────────────────────────────────────────────────────────────
@@ -146,6 +147,78 @@ function drawTerrainObstacle(
   ctx.strokeStyle = "rgba(255, 210, 160, 0.75)";
   ctx.lineWidth = 2;
   ctx.strokeRect(-obstacle.width / 2, -obstacle.height, obstacle.width, obstacle.height);
+  ctx.restore();
+}
+
+// ─── Progress markers ────────────────────────────────────────────────────────
+
+function drawProgressMarkers(
+  ctx: CanvasRenderingContext2D,
+  state: GameState
+): void {
+  const { bestScoreDistance, lastDistance } = state.progress;
+  if (
+    bestScoreDistance > 0 &&
+    lastDistance > 0 &&
+    Math.abs(bestScoreDistance - lastDistance) < 1
+  ) {
+    drawDistanceMarker(
+      ctx,
+      state,
+      bestScoreDistance,
+      "LAST/BEST",
+      "rgba(255, 220, 90, 0.9)"
+    );
+    return;
+  }
+
+  drawDistanceMarker(
+    ctx,
+    state,
+    bestScoreDistance,
+    "BEST SCORE",
+    "rgba(255, 220, 90, 0.9)"
+  );
+  drawDistanceMarker(
+    ctx,
+    state,
+    lastDistance,
+    "LAST",
+    "rgba(120, 190, 255, 0.85)"
+  );
+}
+
+function drawDistanceMarker(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  distance: number,
+  label: string,
+  color: string
+): void {
+  if (distance <= 0) return;
+
+  const markerWorldX = P.startX + distance;
+  const screenX = markerWorldX - state.worldOffset;
+  if (screenX < -40 || screenX > CV.width + 40) return;
+
+  const surface = sampleTerrainAt(state.terrainSegments, markerWorldX);
+  const markerBottom = surface.hasSurface ? surface.y : VIEW_BOTTOM;
+  const markerTop = Math.max(VIEW_TOP + 18, markerBottom - 86);
+
+  ctx.save();
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.setLineDash([5, 5]);
+  ctx.beginPath();
+  ctx.moveTo(screenX, markerTop);
+  ctx.lineTo(screenX, markerBottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = color;
+  ctx.font = "bold 10px monospace";
+  ctx.textAlign = "center";
+  ctx.fillText(`${label} ${Math.round(distance)}m`, screenX, markerTop - 6);
   ctx.restore();
 }
 
@@ -323,43 +396,25 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   ctx.font = "bold 20px monospace";
   ctx.fillText(fmtScore(state.score), 18, 24);
 
-  // Distance
+  // Distance + persistent bests
   ctx.fillStyle = "rgba(100, 120, 170, 0.7)";
   ctx.font = "10px monospace";
-  ctx.fillText(`${Math.round(distanceTraveled)} m`, 18, 37);
-
-  // Survival bar
-  const elapsed = Math.min(state.timeElapsed, OBS.surviveDuration);
-  const remaining = OBS.surviveDuration - elapsed;
-  const timerRatio = elapsed / OBS.surviveDuration;
-  const timerW = 110;
-  const timerH = 4;
-  const timerX = 18;
-  const timerY = 50;
-
-  ctx.fillStyle = "rgba(20, 20, 40, 0.7)";
-  ctx.fillRect(timerX - 1, timerY - 1, timerW + 2, timerH + 2);
-
-  ctx.fillStyle =
-    remaining < 10  ? "rgba(255, 80, 40, 0.9)" :
-    remaining < 20  ? "rgba(255, 180, 40, 0.9)" :
-                      "rgba(80, 200, 120, 0.85)";
-  ctx.fillRect(timerX, timerY, timerW * timerRatio, timerH);
-
-  ctx.fillStyle = remaining < 10 ? "rgba(255, 120, 80, 0.85)" : "rgba(130, 160, 130, 0.7)";
-  ctx.font = "10px monospace";
-  ctx.fillText(`SURVIVE  ${Math.ceil(remaining)}s`, timerX, timerY - 4);
+  ctx.fillText(`${Math.round(distanceTraveled)} m`, 18, 38);
+  ctx.fillStyle = "rgba(255, 220, 90, 0.75)";
+  ctx.fillText(`BEST ${fmtScore(state.progress.bestScore)}`, 18, 53);
+  ctx.fillStyle = "rgba(120, 190, 255, 0.65)";
+  ctx.fillText(`BEST DIST ${Math.round(state.progress.bestDistance)}m`, 18, 67);
 
   // Airborne height (dev aid)
   if (!isGrounded) {
     ctx.fillStyle = "rgba(160, 210, 255, 0.6)";
     ctx.font = "10px monospace";
-    ctx.fillText(`↑ ${Math.round(jumpHeight)} px`, 18, 65);
+    ctx.fillText(`↑ ${Math.round(jumpHeight)} px`, 18, 96);
   }
 
   // Focus meter
   const focusBarX = 18;
-  const focusBarY = 72;
+  const focusBarY = 86;
   const focusBarW = 110;
   const focusBarH = 4;
   const focusFull = state.focusMeter >= 1;
@@ -805,35 +860,13 @@ function drawGameOverOverlay(ctx: CanvasRenderingContext2D, state: GameState): v
   ctx.font = "bold 24px monospace";
   ctx.fillText(fmtScore(state.score), cx, cy + 10);
 
+  ctx.fillStyle = "rgba(160, 190, 255, 0.75)";
+  ctx.font = "13px monospace";
+  ctx.fillText(`${Math.round(state.player.distanceTraveled)} m`, cx, cy + 34);
+
   ctx.fillStyle = "rgba(180, 100, 80, 0.75)";
   ctx.font = "13px monospace";
-  ctx.fillText("R  —  try again", cx, cy + 34);
-
-  ctx.textAlign = "left";
-}
-
-// ─── Win overlay ─────────────────────────────────────────────────────────────
-
-function drawWinOverlay(ctx: CanvasRenderingContext2D, state: GameState): void {
-  ctx.fillStyle = "rgba(0, 0, 8, 0.75)";
-  ctx.fillRect(0, 0, CV.width, CV.height);
-
-  const cx = CV.width / 2;
-  const cy = CV.height / 2;
-
-  ctx.textAlign = "center";
-
-  ctx.fillStyle = "rgba(80, 220, 130, 0.95)";
-  ctx.font = "bold 44px monospace";
-  ctx.fillText("YOU SURVIVED", cx, cy - 28);
-
-  ctx.fillStyle = "rgba(255, 240, 160, 0.9)";
-  ctx.font = "bold 24px monospace";
-  ctx.fillText(fmtScore(state.score), cx, cy + 10);
-
-  ctx.fillStyle = "rgba(100, 170, 110, 0.75)";
-  ctx.font = "13px monospace";
-  ctx.fillText("R  —  play again", cx, cy + 34);
+  ctx.fillText("R  -  try again", cx, cy + 56);
 
   ctx.textAlign = "left";
 }

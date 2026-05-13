@@ -22,9 +22,6 @@ type JumpKey =
   | "gravity"
   | "airControlMultiplier";
 
-type ObstacleKey =
-  | "surviveDuration";
-
 type ScoringKey =
   | "pointsPerPx"
   | "nearMissBonus"
@@ -38,8 +35,7 @@ type OverclockKey =
   | "duration"
   | "speedMultiplier"
   | "scoreMultiplier"
-  | "tokenSpacingMin"
-  | "tokenSpacingRandom";
+  | "tokenSpacing";
 
 type FocusKey =
   | "fillRate"
@@ -51,10 +47,10 @@ type PatchPulseKey =
   | "shockwaveRadiusBonus"
   | "shockwaveDuration";
 
-type ConfigTarget = "player" | "terrain" | "jump" | "obstacles" | "scoring" | "overclock" | "focus" | "patchPulse";
+type ConfigTarget = "player" | "terrain" | "jump" | "scoring" | "overclock" | "focus" | "patchPulse";
 
 interface SliderDef {
-  key: PlayerKey | TerrainKey | JumpKey | ObstacleKey | ScoringKey | OverclockKey | FocusKey | PatchPulseKey;
+  key: PlayerKey | TerrainKey | JumpKey | ScoringKey | OverclockKey | FocusKey | PatchPulseKey;
   target: ConfigTarget;
   label: string;
   min: number;
@@ -90,16 +86,11 @@ const JUMP_DEFAULTS: Record<JumpKey, number> = {
   airControlMultiplier: GAME_CONFIG.jump.airControlMultiplier,
 };
 
-const OBSTACLE_DEFAULTS: Record<ObstacleKey, number> = {
-  surviveDuration: GAME_CONFIG.obstacles.surviveDuration,
-};
-
 const OVERCLOCK_DEFAULTS: Record<OverclockKey, number> = {
   duration: GAME_CONFIG.overclock.duration,
   speedMultiplier: GAME_CONFIG.overclock.speedMultiplier,
   scoreMultiplier: GAME_CONFIG.overclock.scoreMultiplier,
-  tokenSpacingMin: GAME_CONFIG.overclock.tokenSpacingMin,
-  tokenSpacingRandom: GAME_CONFIG.overclock.tokenSpacingRandom,
+  tokenSpacing: GAME_CONFIG.overclock.tokenSpacing,
 };
 
 const FOCUS_DEFAULTS: Record<FocusKey, number> = {
@@ -124,9 +115,9 @@ const SCORING_DEFAULTS: Record<ScoringKey, number> = {
   tier4: GAME_CONFIG.scoring.tier4,
 };
 
-type AllValues = Record<PlayerKey | TerrainKey | JumpKey | ObstacleKey | ScoringKey | OverclockKey | FocusKey | PatchPulseKey, number>;
+type AllValues = Record<PlayerKey | TerrainKey | JumpKey | ScoringKey | OverclockKey | FocusKey | PatchPulseKey, number>;
 
-const ALL_DEFAULTS: AllValues = { ...PLAYER_DEFAULTS, ...TERRAIN_DEFAULTS, ...JUMP_DEFAULTS, ...OBSTACLE_DEFAULTS, ...SCORING_DEFAULTS, ...OVERCLOCK_DEFAULTS, ...FOCUS_DEFAULTS, ...PATCH_PULSE_DEFAULTS };
+const ALL_DEFAULTS: AllValues = { ...PLAYER_DEFAULTS, ...TERRAIN_DEFAULTS, ...JUMP_DEFAULTS, ...SCORING_DEFAULTS, ...OVERCLOCK_DEFAULTS, ...FOCUS_DEFAULTS, ...PATCH_PULSE_DEFAULTS };
 
 // ─── Section definitions ──────────────────────────────────────────────────────
 
@@ -158,19 +149,12 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "RUN",
-    sliders: [
-      { key: "surviveDuration",  target: "obstacles", label: "Survive Time",   min: 15,   max: 180,  step: 5,   format: (v) => `${v} s` },
-    ],
-  },
-  {
     title: "OVERCLOCK",
     sliders: [
       { key: "duration",          target: "overclock", label: "Duration",        min: 2,    max: 12,   step: 0.5, format: (v) => `${v} s` },
       { key: "speedMultiplier",   target: "overclock", label: "Speed Cap ×",     min: 1.2,  max: 4.0,  step: 0.1, format: (v) => `×${v.toFixed(1)}` },
       { key: "scoreMultiplier",   target: "overclock", label: "Score ×",         min: 1,    max: 6,    step: 1,   format: (v) => `×${v}` },
-      { key: "tokenSpacingMin",   target: "overclock", label: "Token Gap Min",   min: 1000, max: 6000, step: 100, format: (v) => `${v} px` },
-      { key: "tokenSpacingRandom",target: "overclock", label: "Token Gap Rnd",   min: 0,    max: 3000, step: 100, format: (v) => `±${v} px` },
+      { key: "tokenSpacing",      target: "overclock", label: "Token Gap",       min: 1200, max: 7000, step: 100, format: (v) => `${v} px` },
     ],
   },
   {
@@ -304,7 +288,7 @@ export default function AdminPanel() {
   }, []);
 
   const handleChange = useCallback(
-    (key: PlayerKey | TerrainKey | JumpKey | ObstacleKey | ScoringKey | OverclockKey | FocusKey | PatchPulseKey, target: ConfigTarget, raw: string) => {
+    (key: PlayerKey | TerrainKey | JumpKey | ScoringKey | OverclockKey | FocusKey | PatchPulseKey, target: ConfigTarget, raw: string) => {
       const n = parseFloat(raw);
       if (isNaN(n)) return;
       setValues((prev) => ({ ...prev, [key]: n }));
@@ -314,8 +298,6 @@ export default function AdminPanel() {
         (GAME_CONFIG.terrain as Record<string, number>)[key] = n;
       } else if (target === "jump") {
         (GAME_CONFIG.jump as Record<string, number>)[key] = n;
-      } else if (target === "obstacles") {
-        (GAME_CONFIG.obstacles as Record<string, number>)[key] = n;
       } else if (target === "scoring") {
         (GAME_CONFIG.scoring as Record<string, number>)[key] = n;
       } else if (target === "overclock") {
@@ -334,7 +316,6 @@ export default function AdminPanel() {
     Object.assign(GAME_CONFIG.player, PLAYER_DEFAULTS);
     Object.assign(GAME_CONFIG.terrain, TERRAIN_DEFAULTS);
     Object.assign(GAME_CONFIG.jump, JUMP_DEFAULTS);
-    Object.assign(GAME_CONFIG.obstacles, OBSTACLE_DEFAULTS);
     Object.assign(GAME_CONFIG.overclock, OVERCLOCK_DEFAULTS);
     Object.assign(GAME_CONFIG.scoring, SCORING_DEFAULTS);
     Object.assign(GAME_CONFIG.focus, FOCUS_DEFAULTS);

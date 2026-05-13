@@ -4,7 +4,7 @@
 
 ## Active quest
 
-None. Quest 08 Phase C (final side-view cleanup) just completed. Ready for the next quest.
+None. Quest 09 (deterministic endless progress) just completed. Ready for the next quest.
 
 ## What exists and works
 
@@ -27,6 +27,15 @@ None. Quest 08 Phase C (final side-view cleanup) just completed. Ready for the n
 - Near-miss scoring now rewards close block clears instead of top-down lane threading
 - Patch Pulse shockwaves clear terrain-attached blocks inside the landing radius
 - Old lane obstacle manager/types/rendering were removed from active code
+
+### Deterministic endless progress (Quest 09 — done)
+- Runs are endless: the old 60-second survival win condition and `"won"` phase were removed
+- Terrain generation uses the fixed segment pattern/index, so a block or gap at a given world position appears in the same place on replay unless the config/pattern changes
+- Overclock and Patch Pulse token spacing is deterministic instead of `Math.random()`-based
+- Local progress persists in `localStorage` under `runtimeRush.progress.v1`
+- Stored progress: last death distance, farthest distance, best score, and the distance reached during the best-score run
+- HUD shows current score, current distance, best score, and best distance
+- World markers show the last death point and the best-score run death point when those positions scroll into view
 
 ## Architecture snapshot
 
@@ -53,7 +62,7 @@ None. Quest 08 Phase C (final side-view cleanup) just completed. Ready for the n
 
 
 ### Patch Pulse (Quest 07, terrain-adapted in 08B — done)
-- Lime green token spawns above sampled terrain (one at a time, after 3000px grace, every 3500–6000px)
+- Lime green token spawns above sampled terrain (one at a time, after 3000px grace, every 4800px)
 - Collecting token: `patchArmed = true` — indicator shows "PATCH  LAND TO FIRE" in HUD
 - Next landing: fires shockwave at player X with radius = `baseRadius(100) + speedRatio × bonus(120)` — max 220px
 - Shockwave clears terrain-attached obstacle blocks whose world X is within radius
@@ -64,13 +73,13 @@ None. Quest 08 Phase C (final side-view cleanup) just completed. Ready for the n
 ### Focus Mode (Quest 06 — done)
 - Amber meter fills while moving: `fillRate × speedRatio × dt` — ~8s to full at max speed
 - Press SHIFT when full (100%) → activates 40% time scale (physDt) for ~3.7s
-- While active: obstacles, player physics, scroll, score all run at 40% speed; overclock timer and survival timer run at real speed
+- While active: obstacles, player physics, scroll, and score all run at 40% speed; overclock timer runs at real speed
 - Focus deactivates when meter reaches 0 or SHIFT released; meter retains remaining charge (must refill to 100% to reactivate)
-- Renderer: amber edge vignette (slow 2.5 rad/s breathe), HUD meter bar (left side, below survive bar), "SHIFT" prompt when full
+- Renderer: amber edge vignette (slow 2.5 rad/s breathe), HUD meter bar (left side), "SHIFT" prompt when full
 - AdminPanel FOCUS section: fillRate, drainRate, timeScale sliders
 
 ### Overclock (Quest 05, terrain-adapted in 08B — done)
-- Cyan token spawns above sampled terrain (one at a time, after 2200px grace, every 2800–4600px)
+- Cyan token spawns above sampled terrain (one at a time, after 2200px grace, every 3700px)
 - Collecting token: immediate ×1.35 speed kick, max speed cap doubles, 5s timer
 - Effect: score multiplier ×2 (stacks with tier), score/near-miss doubled
 - Renderer: rotating diamond token with pulsing rings, edge vignette glow (cyan → orange last 1.5s), brief screen flash on collect
@@ -89,7 +98,7 @@ None. Quest 08 Phase C (final side-view cleanup) just completed. Ready for the n
 
 ```ts
 {
-  phase: "idle" | "playing" | "gameOver" | "won"
+  phase: "idle" | "playing" | "gameOver"
   player: PlayerState
   timeElapsed: number
   worldOffset: number
@@ -103,6 +112,12 @@ None. Quest 08 Phase C (final side-view cleanup) just completed. Ready for the n
   comboTimer: number
   nearMissTimer: number
   nearMissPoints: number
+  progress: {
+    lastDistance: number
+    bestDistance: number
+    bestScore: number
+    bestScoreDistance: number
+  }
   overclockActive: boolean
   overclockTimer: number
   overclockFlash: number
@@ -123,13 +138,12 @@ None. Quest 08 Phase C (final side-view cleanup) just completed. Ready for the n
 
 ## Config sections in gameConfig.ts
 
-`player`, `terrain`, `jump`, `world`, `patchPulse`, `focus`, `overclock`, `obstacles`, `scoring` — all mutable (no `as const`)
+`player`, `terrain`, `jump`, `world`, `patchPulse`, `focus`, `overclock`, `scoring` — all mutable (no `as const`)
 
 ## Pending / not yet built
 
 - Difficulty scaling / terrain pattern tuning
 - Difficulty scaling (obstacle density doesn't ramp up yet)
-- High score persistence
 - Sound / music
 - Portfolio pages around the game
 - Mobile / touch controls

@@ -40,9 +40,9 @@ export function updateTokens(state: GameState, dt: number): void {
         y: spawn.y,
       });
       state.nextTokenAt =
-        state.worldOffset + OC.tokenSpacingMin + Math.random() * OC.tokenSpacingRandom;
+        state.nextTokenAt + OC.tokenSpacing;
     } else {
-      state.nextTokenAt = state.worldOffset + 450;
+      state.nextTokenAt += 450;
     }
   }
 }

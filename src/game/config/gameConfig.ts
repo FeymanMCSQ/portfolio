@@ -61,8 +61,7 @@ export const GAME_CONFIG = {
 
   patchPulse: {
     tokenRadius: 14,
-    tokenSpacingMin: 3500,   // px between patch token spawns
-    tokenSpacingRandom: 2500,
+    tokenSpacing: 4800,      // deterministic px between patch token spawns
     graceDistance: 3000,     // no patch tokens before this worldOffset
     shockwaveBaseRadius: 100,   // px at zero speed
     shockwaveRadiusBonus: 120,  // extra px added at max speed
@@ -82,13 +81,9 @@ export const GAME_CONFIG = {
     speedMultiplier: 2.0,    // max speed cap multiplier during overclock
     scoreMultiplier: 2,      // stacks with the speed-tier multiplier
     tokenRadius: 14,         // collection hitbox radius (adds to player half-dims)
-    tokenSpacingMin: 2800,   // min worldOffset gap between token spawns
-    tokenSpacingRandom: 1800,
+    tokenSpacing: 3700,      // deterministic worldOffset gap between token spawns
     graceDistance: 2200,     // no tokens before this worldOffset
     flashDuration: 0.14,     // screen flash duration on collection
   },
 
-  obstacles: {
-    surviveDuration: 60,   // seconds to survive to win
-  },
 };

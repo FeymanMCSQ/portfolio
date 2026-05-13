@@ -12,11 +12,12 @@
 | 08A | Side-view Terrain Foundation | ✅ done | Added connected terrain segments, terrain sampling, grounded player following, ramp launch, gap detach, simple terrain render |
 | 08B | Terrain Collision & Scoring | ✅ done | Terrain block collision, fall failure, terrain-aware token spawns, Patch Pulse terrain clears, block near-miss scoring |
 | 08C | Side-view Cleanup | ✅ done | Tokens/shockwaves use world coordinates, old track bounds removed, gap edges rendered, docs finalized |
+| 09 | Deterministic Endless Progress | ✅ done | Removed timed win, made token spawns deterministic, persisted last/best run progress, added HUD stats and world markers |
 
 ## Next quest candidates (not decided)
 
 - Difficulty curve / terrain pattern tuning
 - Difficulty curve (ramp up obstacle density / speed over time)
 - Coin / collectible row
-- Obstacle patterns (deliberate sequences, not purely random)
+- More authored terrain/obstacle patterns
 - Portfolio shell (landing page, nav, about section around the game)

@@ -1,4 +1,4 @@
-export type GamePhase = "idle" | "playing" | "gameOver" | "won";
+export type GamePhase = "idle" | "playing" | "gameOver";
 
 export interface PlayerState {
   x: number;
@@ -68,6 +68,13 @@ export interface Shockwave {
   duration: number;
 }
 
+export interface ProgressState {
+  lastDistance: number;
+  bestDistance: number;
+  bestScore: number;
+  bestScoreDistance: number;
+}
+
 export interface GameState {
   phase: GamePhase;
   player: PlayerState;
@@ -85,6 +92,7 @@ export interface GameState {
   comboTimer: number;
   nearMissTimer: number;
   nearMissPoints: number;
+  progress: ProgressState;
 
   // Overclock
   overclockActive: boolean;

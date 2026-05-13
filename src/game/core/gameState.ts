@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import { createPlayerState } from "../systems/playerController";
+import { loadProgress } from "../systems/progressStorage";
 import type { GameState } from "./types";
 
 export function createInitialGameState(): GameState {
@@ -18,6 +19,7 @@ export function createInitialGameState(): GameState {
     comboTimer: 0,
     nearMissTimer: 0,
     nearMissPoints: 0,
+    progress: loadProgress(),
     overclockActive: false,
     overclockTimer: 0,
     overclockFlash: 0,
