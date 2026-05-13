@@ -4,7 +4,7 @@
 
 ## Active quest
 
-None. Quest 10 (obstacle visibility + touch controls) just completed. Ready for the next quest.
+None. Quest 11 (master controls overlay) just completed. Ready for the next quest.
 
 ## What exists and works
 
@@ -13,7 +13,9 @@ None. Quest 10 (obstacle visibility + touch controls) just completed. Ready for 
 - Touch: hold to accelerate; short tap queues jump; short tap on game-over queues restart
 - A/D/←/→ no longer moves the player vertically after the side-view Phase A refactor
 - Parallax grid (3 layers), speed lines, speed-reactive player colour/trail/glow
-- Localhost-only admin panel (⚙ button, bottom-right) — live-tunes all physics values
+- Localhost-only master controls overlay (⚙ button, bottom-right) — live-tunes all physics values in clearly divided sections
+- Master controls supports Local Settings, Global Settings, and Reset Default
+- Global Settings is dev-only and writes selected tuning values back to `src/game/config/gameConfig.ts`
 
 ### Jump (Quest 02 — done)
 - Space to jump; speed-dependent arc (faster = higher + longer)

@@ -14,6 +14,7 @@
 | 08C | Side-view Cleanup | ✅ done | Tokens/shockwaves use world coordinates, old track bounds removed, gap edges rendered, docs finalized |
 | 09 | Deterministic Endless Progress | ✅ done | Removed timed win, made token spawns deterministic, persisted last/best run progress, added HUD stats and world markers |
 | 10 | Obstacle Visibility + Touch Controls | ✅ done | Draw terrain blocks after terrain fills to prevent slope occlusion; added hold-to-accelerate and tap-to-jump touch input |
+| 11 | Master Controls Overlay | ✅ done | Replaced narrow admin rail with large sectioned modal; added local/global tuning modes and dev-only source config saving |
 
 ## Next quest candidates (not decided)
 
