@@ -6,57 +6,277 @@ const { canvas: CV, player: P, world: W, jump: J, overclock: OC, focus: FC, patc
 const VIEW_TOP = 64;
 const VIEW_BOTTOM = CV.height - 34;
 
+// ─── Visual constants ─────────────────────────────────────────────────────────
+
+// Skateboard geometry — all values in player-local space, y=0 is hitbox centre
+const BOARD = {
+  deckW:   34,
+  deckH:   4,
+  deckTop: -7,   // top of deck above centre
+  wheelR:  4,
+  wheelY:  5,    // wheel centre below centre (bottom = hitbox bottom)
+  wheelFX: 12,   // front wheel X (right)
+  wheelBX: -12,  // back wheel X (left)
+};
+
+const BG = {
+  skyTop:         "#b2a8d2",
+  skyMid:         "#becade",
+  skyHorizon:     "#cedad8",
+
+  farFill:        "rgba(160, 144, 192, 0.50)",
+  farRingStroke:  "rgba(160, 144, 192, 0.28)",
+  midFill:        "rgba(82, 132, 150, 0.60)",
+  nearFill:       "rgba(92, 124, 100, 0.70)",
+
+  terrainBody:    "#182436",
+  terrainEdge:    "#40c8b0",
+  terrainGlow:    "rgba(54, 192, 164, 0.55)",
+  terrainRampEdge: "#58dcc0",
+  terrainRampGlow: "rgba(74, 212, 184, 0.65)",
+};
+
+// ─── Renderer-local juice state (no GameState mutation) ───────────────────────
+
+interface Particle {
+  x: number; y: number;
+  vx: number; vy: number;
+  life: number;   // 1 → 0
+  decay: number;  // per second
+  r: number;
+  kind: "landing" | "dust";
+}
+
+const _particles: Particle[] = [];
+let _prevTimeElapsed = 0;
+let _prevPhase       = "idle";
+let _shakeTimer      = 0;
+let _dustTimer       = 0;
+const _SHAKE_DUR     = 0.32;
+
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
   state: GameState
 ): void {
+  const dt = Math.max(0, Math.min(state.timeElapsed - _prevTimeElapsed, 0.05));
+  _prevTimeElapsed = state.timeElapsed;
+
+  if (state.phase === "gameOver" && _prevPhase !== "gameOver") _shakeTimer = _SHAKE_DUR;
+  _prevPhase = state.phase;
+
+  if (state.player.justLanded) spawnLandingParticles(state.player.x, state.player.surfaceY);
+
+  if (state.player.isGrounded && state.player.speed / P.maxSpeed > 0.62) {
+    _dustTimer -= dt;
+    if (_dustTimer <= 0) {
+      spawnDustParticle(state.player.x, state.player.surfaceY);
+      _dustTimer = 0.09;
+    }
+  } else {
+    _dustTimer = 0;
+  }
+
   ctx.clearRect(0, 0, CV.width, CV.height);
   drawBackground(ctx);
-  drawOverclockEdge(ctx, state);    // atmospheric edge glow — behind grid
-  drawFocusEdge(ctx, state);        // amber vignette during focus — behind grid
-  drawParallaxGrid(ctx, state);
+  drawBackgroundLayers(ctx, state);
+
+  ctx.save();
+  if (_shakeTimer > 0) {
+    _shakeTimer = Math.max(0, _shakeTimer - dt);
+    const intensity = (_shakeTimer / _SHAKE_DUR) ** 2;
+    ctx.translate((Math.random() * 2 - 1) * 7 * intensity, (Math.random() * 2 - 1) * 5 * intensity);
+  }
+  drawOverclockEdge(ctx, state);
+  drawFocusEdge(ctx, state);
   drawTerrain(ctx, state);
   drawProgressMarkers(ctx, state);
   drawSpeedLines(ctx, state);
-  drawTokens(ctx, state);           // overclock tokens behind player
-  drawPatchTokens(ctx, state);      // patch pulse tokens behind player
-  drawShockwaves(ctx, state);       // ground shockwaves
+  drawTokens(ctx, state);
+  drawPatchTokens(ctx, state);
+  drawShockwaves(ctx, state);
   drawPlayerShadow(ctx, state);
   drawPlayer(ctx, state);
   drawLandingRing(ctx, state);
+  updateAndDrawParticles(ctx, dt);
+  ctx.restore();
+
   drawHUD(ctx, state);
   drawNearMissPopup(ctx, state);
   drawControlsHint(ctx, state);
-  drawOverclockFlash(ctx, state);   // full-screen flash — topmost game layer
+  drawOverclockFlash(ctx, state);
   if (state.phase === "gameOver") drawGameOverOverlay(ctx, state);
 }
 
 // ─── Background ──────────────────────────────────────────────────────────────
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {
-  ctx.fillStyle = "#08080f";
+  const grad = ctx.createLinearGradient(0, 0, 0, CV.height);
+  grad.addColorStop(0,    BG.skyTop);
+  grad.addColorStop(0.48, BG.skyMid);
+  grad.addColorStop(0.82, BG.skyHorizon);
+  grad.addColorStop(1,    "#c4d4d0");
+  ctx.fillStyle = grad;
   ctx.fillRect(0, 0, CV.width, CV.height);
 }
 
-// ─── Parallax grid ───────────────────────────────────────────────────────────
+// ─── Parallax background layers ──────────────────────────────────────────────
 
-function drawParallaxGrid(
+function drawBackgroundLayers(
   ctx: CanvasRenderingContext2D,
   state: GameState
 ): void {
-  for (let layer = 0; layer < 3; layer++) {
-    const spacing = W.gridSpacings[layer];
-    const offset = (state.worldOffset * W.gridSpeeds[layer]) % spacing;
+  drawFarLayer(ctx, state.worldOffset);
+  drawMidLayer(ctx, state.worldOffset);
+  drawNearLayer(ctx, state.worldOffset);
+}
 
-    ctx.strokeStyle = `rgba(50, 70, 180, ${W.gridOpacities[layer]})`;
-    ctx.lineWidth = 1;
+// Waypoints for the far rolling-dune horizon — relative X within tile, absolute Y
+const FAR_HILL_PTS: [number, number][] = [
+  [0,    282], [220, 264], [480, 274], [720, 260],
+  [950,  270], [1180, 258], [1420, 268], [1660, 262],
+  [1900, 272], [2160, 260], [2400, 278],
+];
+
+function drawFarLayer(ctx: CanvasRenderingContext2D, worldOffset: number): void {
+  const tileW   = 2400;
+  const bgOff   = (worldOffset * 0.04) % tileW;
+
+  for (let tx = -bgOff; tx < CV.width + tileW; tx += tileW) {
+    ctx.fillStyle = BG.farFill;
+
+    // Rolling dune horizon — smooth polygon from hill crests down to canvas bottom
     ctx.beginPath();
-
-    for (let x = CV.width - offset; x > -spacing; x -= spacing) {
-      ctx.moveTo(x, VIEW_TOP);
-      ctx.lineTo(x, VIEW_BOTTOM);
+    ctx.moveTo(tx - 2, CV.height);
+    ctx.lineTo(tx + FAR_HILL_PTS[0][0], FAR_HILL_PTS[0][1]);
+    for (let i = 1; i < FAR_HILL_PTS.length - 1; i++) {
+      const [cx, cy] = FAR_HILL_PTS[i];
+      const [nx, ny] = FAR_HILL_PTS[i + 1];
+      ctx.quadraticCurveTo(tx + cx, cy, tx + (cx + nx) / 2, (cy + ny) / 2);
     }
+    const sL = FAR_HILL_PTS[FAR_HILL_PTS.length - 2];
+    const la = FAR_HILL_PTS[FAR_HILL_PTS.length - 1];
+    ctx.quadraticCurveTo(tx + sL[0], sL[1], tx + la[0], la[1]);
+    ctx.lineTo(tx + tileW + 2, CV.height);
+    ctx.closePath();
+    ctx.fill();
+
+    // Obelisk A — narrow shaft + triangular peak
+    ctx.fillRect(tx + 316, 218, 8, 56);
+    ctx.beginPath();
+    ctx.moveTo(tx + 320, 208);
+    ctx.lineTo(tx + 316, 218);
+    ctx.lineTo(tx + 324, 218);
+    ctx.closePath();
+    ctx.fill();
+
+    // Obelisk B — thinner
+    ctx.fillRect(tx + 1482, 224, 6, 48);
+    ctx.beginPath();
+    ctx.moveTo(tx + 1485, 215);
+    ctx.lineTo(tx + 1482, 224);
+    ctx.lineTo(tx + 1488, 224);
+    ctx.closePath();
+    ctx.fill();
+
+    // Stepped distant monolith at right of tile
+    ctx.fillRect(tx + 1822, 262, 42, 12);
+    ctx.fillRect(tx + 1828, 251, 30, 11);
+    ctx.fillRect(tx + 1834, 241, 18,  10);
+
+    // Orbital ring — faint flattened ellipse high in sky
+    ctx.strokeStyle = BG.farRingStroke;
+    ctx.lineWidth = 3;
+    ctx.save();
+    ctx.translate(tx + 840, 136);
+    ctx.scale(1, 0.40);
+    ctx.beginPath();
+    ctx.arc(0, 0, 34, 0, Math.PI * 2);
     ctx.stroke();
+    ctx.restore();
+  }
+}
+
+function drawMidLayer(ctx: CanvasRenderingContext2D, worldOffset: number): void {
+  const tileW = 1800;
+  const bgOff = (worldOffset * 0.15) % tileW;
+
+  for (let tx = -bgOff; tx < CV.width + tileW; tx += tileW) {
+    ctx.fillStyle = BG.midFill;
+
+    // Ruined arch — annular stone crown + two pillars
+    const acx    = tx + 228;
+    const aBaseY = 248;
+    const aOuter = 34;
+    const aInner = 22;
+    ctx.beginPath();
+    ctx.arc(acx, aBaseY, aOuter, Math.PI, 0);           // outer top half L→R
+    ctx.lineTo(acx + aInner, aBaseY);
+    ctx.arc(acx, aBaseY, aInner, 0, Math.PI, true);     // inner top half R→L
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillRect(acx - aOuter, aBaseY, aOuter - aInner, 52); // left pillar
+    ctx.fillRect(acx + aInner, aBaseY, aOuter - aInner, 52); // right pillar
+
+    // Rounded tower
+    ctx.fillRect(tx + 758, 200, 24, 98);
+    ctx.beginPath();
+    ctx.arc(tx + 770, 200, 12, Math.PI, 0);
+    ctx.fill();
+
+    // Floating sphere + small satellite
+    ctx.beginPath();
+    ctx.arc(tx + 518, 176, 13, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(tx + 544, 163, 5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Broken horizontal wall slab
+    ctx.fillRect(tx + 1342, 264, 80, 15);
+    ctx.fillRect(tx + 1362, 256, 40,  8);
+
+    // Distant pylon cluster — three thin columns
+    ctx.fillRect(tx + 1642, 242, 10, 56);
+    ctx.fillRect(tx + 1660, 252, 8,  46);
+    ctx.fillRect(tx + 1676, 246, 10, 52);
+  }
+}
+
+function drawNearLayer(ctx: CanvasRenderingContext2D, worldOffset: number): void {
+  const tileW = 2000;
+  const bgOff = (worldOffset * 0.28) % tileW;
+
+  for (let tx = -bgOff; tx < CV.width + tileW; tx += tileW) {
+    ctx.fillStyle = BG.nearFill;
+
+    // Organic rock formation (main)
+    ctx.beginPath();
+    ctx.moveTo(tx + 120, 308);
+    ctx.bezierCurveTo(tx + 112, 272, tx + 148, 254, tx + 182, 258);
+    ctx.bezierCurveTo(tx + 214, 252, tx + 246, 264, tx + 250, 282);
+    ctx.bezierCurveTo(tx + 260, 296, tx + 252, 308, tx + 238, 308);
+    ctx.closePath();
+    ctx.fill();
+
+    // Second rock peak overlapping the first
+    ctx.beginPath();
+    ctx.moveTo(tx + 200, 308);
+    ctx.bezierCurveTo(tx + 196, 276, tx + 222, 260, tx + 248, 268);
+    ctx.bezierCurveTo(tx + 268, 276, tx + 274, 295, tx + 270, 308);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ruined column with wider capital
+    ctx.fillRect(tx + 862, 264, 16, 44);
+    ctx.fillRect(tx + 856, 258, 28,  8);
+
+    // Wide low terrain mound
+    ctx.beginPath();
+    ctx.moveTo(tx + 1500, 308);
+    ctx.bezierCurveTo(tx + 1500, 286, tx + 1540, 278, tx + 1580, 280);
+    ctx.bezierCurveTo(tx + 1620, 278, tx + 1660, 288, tx + 1660, 308);
+    ctx.closePath();
+    ctx.fill();
   }
 }
 
@@ -88,7 +308,8 @@ function drawTerrainSegment(
     return;
   }
 
-  ctx.fillStyle = "rgba(28, 36, 54, 0.92)";
+  // Terrain body — deep slate fill
+  ctx.fillStyle = BG.terrainBody;
   ctx.beginPath();
   ctx.moveTo(x1, segment.startY);
   ctx.lineTo(x2, segment.endY);
@@ -97,16 +318,19 @@ function drawTerrainSegment(
   ctx.closePath();
   ctx.fill();
 
-  ctx.strokeStyle = segment.type === "small-ramp"
-    ? "rgba(100, 230, 255, 0.95)"
-    : "rgba(105, 145, 220, 0.92)";
-  ctx.lineWidth = segment.type === "small-ramp" ? 5 : 4;
-  ctx.lineCap = "round";
+  // Glowing top edge
+  const isRamp = segment.type === "small-ramp";
+  ctx.save();
+  ctx.shadowColor = isRamp ? BG.terrainRampGlow : BG.terrainGlow;
+  ctx.shadowBlur  = isRamp ? 10 : 7;
+  ctx.strokeStyle = isRamp ? BG.terrainRampEdge : BG.terrainEdge;
+  ctx.lineWidth   = isRamp ? 3 : 2.5;
+  ctx.lineCap     = "round";
   ctx.beginPath();
   ctx.moveTo(x1, segment.startY);
   ctx.lineTo(x2, segment.endY);
   ctx.stroke();
-  ctx.lineCap = "butt";
+  ctx.restore();
 
 }
 
@@ -146,14 +370,40 @@ function drawTerrainObstacle(
     return;
   }
 
+  const w = obstacle.width;
+  const h = obstacle.height;
+
   ctx.save();
   ctx.translate(screenX, surfaceY);
   ctx.rotate(angle);
-  ctx.fillStyle = "rgba(255, 80, 40, 0.92)";
-  ctx.fillRect(-obstacle.width / 2, -obstacle.height, obstacle.width, obstacle.height);
-  ctx.strokeStyle = "rgba(255, 210, 160, 0.75)";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(-obstacle.width / 2, -obstacle.height, obstacle.width, obstacle.height);
+
+  // Warm ambient glow
+  ctx.save();
+  ctx.shadowColor = "rgba(240, 120, 40, 0.55)";
+  ctx.shadowBlur = 14;
+  ctx.fillStyle = "#d87840";
+  ctx.fillRect(-w / 2, -h, w, h);
+  ctx.restore();
+
+  // Left shadow edge
+  ctx.fillStyle = "#804030";
+  ctx.fillRect(-w / 2, -h, 3, h);
+
+  // Bottom shadow band
+  ctx.fillStyle = "rgba(100, 40, 20, 0.55)";
+  ctx.fillRect(-w / 2, -5, w, 5);
+
+  // Top highlight stripe
+  ctx.fillStyle = "#f09840";
+  ctx.fillRect(-w / 2, -h, w, 3);
+
+  // Hazard cross
+  const armW = 4;
+  const armL = 12;
+  ctx.fillStyle = "rgba(255, 220, 140, 0.52)";
+  ctx.fillRect(-armW / 2, -h / 2 - armL / 2, armW, armL);
+  ctx.fillRect(-armL / 2, -h / 2 - armW / 2, armL, armW);
+
   ctx.restore();
 }
 
@@ -263,7 +513,7 @@ function drawSpeedLines(
     if (x < -len || x > CV.width + len) continue;
 
     const alpha = intensity * 0.38 * (0.55 + 0.45 * slot.tY);
-    ctx.strokeStyle = `rgba(120, 165, 255, ${alpha})`;
+    ctx.strokeStyle = `rgba(186, 174, 222, ${alpha})`;
     ctx.lineWidth = slot.thickEvery ? 1.5 : 1;
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -285,10 +535,10 @@ function drawPlayerShadow(
 
   ctx.save();
   ctx.translate(x, surfaceY);
-  ctx.scale(heightFactor, 0.28);
+  ctx.scale(heightFactor, 0.20);
   ctx.beginPath();
-  ctx.ellipse(0, 0, P.width * 0.55, P.height * 0.55, 0, 0, Math.PI * 2);
-  ctx.fillStyle = `rgba(0, 0, 12, ${0.55 * heightFactor})`;
+  ctx.ellipse(0, 0, BOARD.deckW * 0.52, BOARD.wheelR, 0, 0, Math.PI * 2);
+  ctx.fillStyle = `rgba(8, 18, 28, ${0.48 * heightFactor})`;
   ctx.fill();
   ctx.restore();
 }
@@ -299,67 +549,96 @@ function drawPlayer(
   ctx: CanvasRenderingContext2D,
   state: GameState
 ): void {
-  const { x, y, speed, groundAngle, jumpVelocity, isGrounded, landingTimer } =
-    state.player;
+  const { x, y, speed, groundAngle, jumpVelocity, isGrounded, landingTimer } = state.player;
   const speedRatio = speed / P.maxSpeed;
 
-  const canvasY = y;
-
+  // Squash/stretch — same logic as before, applied to the whole board
   let squashX = 1.0;
   let squashY = 1.0;
 
   if (!isGrounded) {
     if (jumpVelocity > 0) {
       const velFactor = Math.min(jumpVelocity / J.baseVelocity, 1);
-      squashY = 1 + velFactor * 0.2;
-      squashX = 1 - velFactor * 0.08;
+      squashY = 1 + velFactor * 0.18;
+      squashX = 1 - velFactor * 0.06;
     }
   } else if (landingTimer < J.landingSquashDuration) {
     const t = landingTimer / J.landingSquashDuration;
     const eased = 1 - (1 - t) * (1 - t);
-    squashY = 0.62 + 0.38 * eased;
-    squashX = 1.38 - 0.38 * eased;
+    squashY = 0.65 + 0.35 * eased;
+    squashX = 1.35 - 0.35 * eased;
   }
 
   const leanAngle = isGrounded ? groundAngle : 0;
-  const stretchX = 1 + speedRatio * 0.18;
-
-  const r = Math.round(80 + speedRatio * 175);
-  const g = Math.round(145 - speedRatio * 95);
-  const b = Math.round(255 - speedRatio * 80);
+  const stretchX  = 1 + speedRatio * 0.14;
 
   ctx.save();
-  ctx.translate(x, canvasY);
+  ctx.translate(x, y);
   ctx.rotate(leanAngle);
   ctx.scale(stretchX * squashX, squashY);
 
-  const trailLen = speedRatio * 72;
-  if (trailLen > 6) {
-    const grad = ctx.createLinearGradient(-trailLen, 0, 0, 0);
-    grad.addColorStop(0, "rgba(70, 110, 255, 0)");
-    grad.addColorStop(0.6, `rgba(70, 110, 255, ${speedRatio * 0.25})`);
-    grad.addColorStop(1, `rgba(70, 110, 255, ${speedRatio * 0.45})`);
-    ctx.fillStyle = grad;
-    ctx.fillRect(-trailLen, -P.height / 2, trailLen, P.height);
+  // Speed trail — teal streak behind the board
+  const trailLen = speedRatio * 60;
+  if (trailLen > 4) {
+    const tGrad = ctx.createLinearGradient(
+      -BOARD.deckW / 2 - trailLen, 0,
+      -BOARD.deckW / 2, 0
+    );
+    tGrad.addColorStop(0, "rgba(60, 196, 172, 0)");
+    tGrad.addColorStop(1, `rgba(60, 196, 172, ${speedRatio * 0.36})`);
+    ctx.fillStyle = tGrad;
+    ctx.fillRect(
+      -BOARD.deckW / 2 - trailLen,
+      BOARD.deckTop - 1,
+      trailLen,
+      BOARD.deckH + 2
+    );
   }
 
-  ctx.fillStyle = `rgb(${r},${g},${b})`;
-  ctx.fillRect(-P.width / 2, -P.height / 2, P.width, P.height);
+  // ── Trucks ────────────────────────────────────────────────────────────────
+  const truckTop = BOARD.deckTop + BOARD.deckH;
+  const truckH   = BOARD.wheelY - BOARD.wheelR - truckTop;
+  ctx.fillStyle = "#4a4a58";
+  ctx.fillRect(BOARD.wheelFX - 3, truckTop, 6, truckH);
+  ctx.fillRect(BOARD.wheelBX - 3, truckTop, 6, truckH);
 
-  if (speedRatio > 0.58) {
-    const glowAlpha = (speedRatio - 0.58) / 0.42;
-    ctx.shadowColor = `rgba(${r},${g},${b},0.85)`;
-    ctx.shadowBlur = 14 * glowAlpha;
-    ctx.fillRect(-P.width / 2, -P.height / 2, P.width, P.height);
-    ctx.shadowBlur = 0;
+  // ── Deck base — near-black with speed glow ────────────────────────────────
+  ctx.save();
+  if (speedRatio > 0.50) {
+    const glow = (speedRatio - 0.50) / 0.50;
+    ctx.shadowColor = `rgba(60, 200, 176, ${glow * 0.80})`;
+    ctx.shadowBlur  = 10 * glow;
   }
+  ctx.fillStyle = "#1a1a2e";
+  ctx.fillRect(-BOARD.deckW / 2, BOARD.deckTop, BOARD.deckW, BOARD.deckH);
+  ctx.restore();
 
-  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  // ── Iridescent stripe overlay on deck ────────────────────────────────────
+  const iGrad = ctx.createLinearGradient(-BOARD.deckW / 2, 0, BOARD.deckW / 2, 0);
+  iGrad.addColorStop(0,    "rgba(0, 229, 255, 0)");
+  iGrad.addColorStop(0.26, "rgba(0, 229, 255, 0.72)");
+  iGrad.addColorStop(0.56, "rgba(210, 40, 255, 0.65)");
+  iGrad.addColorStop(0.80, "rgba(0, 229, 255, 0.42)");
+  iGrad.addColorStop(1,    "rgba(0, 229, 255, 0)");
+  ctx.fillStyle = iGrad;
+  ctx.fillRect(-BOARD.deckW / 2, BOARD.deckTop, BOARD.deckW, BOARD.deckH);
+
+  // ── Wheels ────────────────────────────────────────────────────────────────
+  ctx.fillStyle = "#d4d0b8";
   ctx.beginPath();
-  ctx.moveTo(P.width / 2, 0);
-  ctx.lineTo(P.width / 2 - 8, -4);
-  ctx.lineTo(P.width / 2 - 8, 4);
-  ctx.closePath();
+  ctx.arc(BOARD.wheelFX, BOARD.wheelY, BOARD.wheelR, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(BOARD.wheelBX, BOARD.wheelY, BOARD.wheelR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Wheel highlight
+  ctx.fillStyle = "rgba(255, 255, 255, 0.50)";
+  ctx.beginPath();
+  ctx.arc(BOARD.wheelFX - 1, BOARD.wheelY - 1, 1.5, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(BOARD.wheelBX - 1, BOARD.wheelY - 1, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -378,8 +657,8 @@ function drawLandingRing(
   const radius = t * 48;
   const alpha = (1 - t) * 0.7;
 
-  ctx.strokeStyle = `rgba(140, 190, 255, ${alpha})`;
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = `rgba(60, 200, 176, ${alpha})`;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.arc(x, surfaceY, radius, 0, Math.PI * 2);
   ctx.stroke();
@@ -575,13 +854,13 @@ function drawNearMissPopup(ctx: CanvasRenderingContext2D, state: GameState): voi
   ctx.textAlign = "center";
 
   // Points
-  ctx.fillStyle = `rgba(255, 240, 120, ${alpha})`;
+  ctx.fillStyle = `rgba(240, 192, 60, ${alpha})`;
   ctx.font = "bold 22px monospace";
   ctx.fillText(`+${fmtScore(state.nearMissPoints)}`, CV.width / 2, popY);
 
   // Label
   const label = state.combo > 1 ? `NEAR MISS  ×${state.combo} COMBO` : "NEAR MISS";
-  ctx.fillStyle = `rgba(200, 210, 255, ${alpha * 0.85})`;
+  ctx.fillStyle = `rgba(240, 192, 60, ${alpha * 0.65})`;
   ctx.font = "11px monospace";
   ctx.fillText(label, CV.width / 2, popY + 16);
 
@@ -848,32 +1127,93 @@ function drawOverclockFlash(ctx: CanvasRenderingContext2D, state: GameState): vo
   ctx.fillRect(0, 0, CV.width, CV.height);
 }
 
+// ─── Particles ───────────────────────────────────────────────────────────────
+
+function spawnLandingParticles(x: number, y: number): void {
+  for (let i = 0; i < 7; i++) {
+    const angle = Math.PI + (Math.random() - 0.5) * Math.PI * 0.7;
+    const speed = 40 + Math.random() * 90;
+    _particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - 30,
+      life: 1, decay: 2.8 + Math.random() * 1.4,
+      r: 2 + Math.random() * 2.5,
+      kind: "landing",
+    });
+  }
+}
+
+function spawnDustParticle(x: number, y: number): void {
+  _particles.push({
+    x: x - 18 + (Math.random() - 0.5) * 10,
+    y: y + (Math.random() - 0.5) * 3,
+    vx: -30 - Math.random() * 50,
+    vy: -8 - Math.random() * 18,
+    life: 1, decay: 3.5 + Math.random() * 2,
+    r: 1.5 + Math.random() * 2,
+    kind: "dust",
+  });
+}
+
+function updateAndDrawParticles(ctx: CanvasRenderingContext2D, dt: number): void {
+  for (let i = _particles.length - 1; i >= 0; i--) {
+    const p = _particles[i];
+    p.life -= p.decay * dt;
+    if (p.life <= 0) { _particles.splice(i, 1); continue; }
+    p.x += p.vx * dt;
+    p.y += p.vy * dt;
+    p.vy += 180 * dt; // gravity pull-down
+
+    const alpha = p.life * (p.kind === "landing" ? 0.72 : 0.45);
+    ctx.fillStyle = p.kind === "landing"
+      ? `rgba(60, 200, 176, ${alpha})`
+      : `rgba(186, 174, 222, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
 // ─── Game Over overlay ───────────────────────────────────────────────────────
 
 function drawGameOverOverlay(ctx: CanvasRenderingContext2D, state: GameState): void {
-  ctx.fillStyle = "rgba(0, 0, 8, 0.75)";
+  ctx.fillStyle = "rgba(0, 0, 8, 0.68)";
   ctx.fillRect(0, 0, CV.width, CV.height);
 
   const cx = CV.width / 2;
   const cy = CV.height / 2;
+  const panelW = 320;
+  const panelH = 148;
+  const panelX = cx - panelW / 2;
+  const panelY = cy - panelH / 2;
+
+  // Centered dark panel
+  ctx.fillStyle = "rgba(8, 12, 28, 0.88)";
+  ctx.beginPath();
+  ctx.roundRect(panelX, panelY, panelW, panelH, 8);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(136, 152, 204, 0.22)";
+  ctx.lineWidth = 1;
+  ctx.stroke();
 
   ctx.textAlign = "center";
 
-  ctx.fillStyle = "rgba(255, 60, 30, 0.95)";
-  ctx.font = "bold 44px monospace";
-  ctx.fillText("GAME OVER", cx, cy - 28);
+  ctx.fillStyle = "rgba(224, 96, 80, 0.95)";
+  ctx.font = "bold 36px monospace";
+  ctx.fillText("GAME OVER", cx, panelY + 44);
 
-  ctx.fillStyle = "rgba(255, 240, 160, 0.9)";
-  ctx.font = "bold 24px monospace";
-  ctx.fillText(fmtScore(state.score), cx, cy + 10);
+  ctx.fillStyle = "#e8eeff";
+  ctx.font = "bold 26px monospace";
+  ctx.fillText(fmtScore(state.score), cx, panelY + 82);
 
-  ctx.fillStyle = "rgba(160, 190, 255, 0.75)";
-  ctx.font = "13px monospace";
-  ctx.fillText(`${Math.round(state.player.distanceTraveled)} m`, cx, cy + 34);
+  ctx.fillStyle = "rgba(136, 152, 204, 0.80)";
+  ctx.font = "12px monospace";
+  ctx.fillText(`${Math.round(state.player.distanceTraveled)} m`, cx, panelY + 104);
 
-  ctx.fillStyle = "rgba(180, 100, 80, 0.75)";
-  ctx.font = "13px monospace";
-  ctx.fillText("R  -  try again", cx, cy + 56);
+  ctx.fillStyle = "#40c8b0";
+  ctx.font = "12px monospace";
+  ctx.fillText("R  —  try again", cx, panelY + 130);
 
   ctx.textAlign = "left";
 }

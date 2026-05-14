@@ -11,9 +11,9 @@ export const GAME_CONFIG = {
     width: 38,
     height: 18,
 
-    acceleration: 290,     // px/s² — tune: higher = more responsive snap
+    acceleration: 385,     // px/s² — tune: higher = more responsive snap
     friction: 0.993,       // per-frame decay — ~4s coast from max to stop (0.982^60 ≈ 0.34/s)
-    maxSpeed: 680,         // px/s forward
+    maxSpeed: 860,         // px/s forward
   },
 
   terrain: {
