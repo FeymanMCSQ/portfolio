@@ -52,7 +52,9 @@ let _prevTimeElapsed = 0;
 let _prevPhase       = "idle";
 let _shakeTimer      = 0;
 let _dustTimer       = 0;
+let _cameraY         = 0;
 const _SHAKE_DUR     = 0.32;
+const CAMERA_GROUND_Y = GAME_CONFIG.terrain.groundY; // terrain natural screen Y — camera offset = 0 here
 
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
@@ -76,9 +78,37 @@ export function renderFrame(
     _dustTimer = 0;
   }
 
+  // Camera — stable terrain-aware vertical follow.
+  // Anchors to surfaceY (terrain contact point) not player.y, so jump arcs and
+  // landing impacts don't move the camera. A 500px lookahead sample shifts the
+  // camera down before the player reaches a downhill section.
+  const playerWorldX = state.worldOffset + state.player.x;
+  const sAhead       = sampleTerrainAt(state.terrainSegments, playerWorldX + 500);
+  const aheadY       = sAhead.hasSurface ? sAhead.y : state.player.surfaceY;
+  const lowestY      = Math.max(state.player.surfaceY, aheadY);
+
+  // On flat terrain (lowestY == CAMERA_GROUND_Y) → rawTarget == 0 → no camera movement.
+  // When terrain drops below ground Y, rawTarget goes negative → camera shifts world up.
+  const rawTarget     = CAMERA_GROUND_Y - lowestY;
+  const clampedTarget = Math.max(-200, Math.min(60, rawTarget));
+
+  const justDied      = state.phase === "gameOver" && _prevPhase !== "gameOver";
+  const justRestarted = state.timeElapsed < _prevTimeElapsed;
+
+  if (justDied || justRestarted) {
+    _cameraY = clampedTarget;                               // snap on death / game restart
+  } else if (state.phase === "playing") {
+    const diff = clampedTarget - _cameraY;
+    if (Math.abs(diff) > 12) {                             // dead zone — absorbs micro-bumps
+      _cameraY += diff * Math.min(1, diff < 0 ? dt * 7 : dt * 2.5);
+    }
+  }
+
   ctx.clearRect(0, 0, CV.width, CV.height);
   drawBackground(ctx);
   drawBackgroundLayers(ctx, state);
+  drawOverclockEdge(ctx, state);   // screen-space effects — no camera transform
+  drawFocusEdge(ctx, state);
 
   ctx.save();
   if (_shakeTimer > 0) {
@@ -86,8 +116,7 @@ export function renderFrame(
     const intensity = (_shakeTimer / _SHAKE_DUR) ** 2;
     ctx.translate((Math.random() * 2 - 1) * 7 * intensity, (Math.random() * 2 - 1) * 5 * intensity);
   }
-  drawOverclockEdge(ctx, state);
-  drawFocusEdge(ctx, state);
+  ctx.translate(0, _cameraY);
   drawTerrain(ctx, state);
   drawProgressMarkers(ctx, state);
   drawSpeedLines(ctx, state);
@@ -309,12 +338,14 @@ function drawTerrainSegment(
   }
 
   // Terrain body — deep slate fill
+  // fillBottom must account for camera offset so the body always reaches the screen edge.
+  const fillBottom = CV.height - _cameraY;
   ctx.fillStyle = BG.terrainBody;
   ctx.beginPath();
   ctx.moveTo(x1, segment.startY);
   ctx.lineTo(x2, segment.endY);
-  ctx.lineTo(x2, CV.height);
-  ctx.lineTo(x1, CV.height);
+  ctx.lineTo(x2, fillBottom);
+  ctx.lineTo(x1, fillBottom);
   ctx.closePath();
   ctx.fill();
 

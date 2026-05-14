@@ -52,8 +52,14 @@ export function ensureTerrainAhead(state: GameState): void {
   const targetX = state.worldOffset + CV.width + T.generateAhead;
 
   while (last.endX < targetX) {
-    const type = SEGMENT_PATTERN[state.terrainPatternIndex % SEGMENT_PATTERN.length];
+    let type = SEGMENT_PATTERN[state.terrainPatternIndex % SEGMENT_PATTERN.length];
     state.terrainPatternIndex += 1;
+
+    // Prevent runaway downward drift — swap descending segments for flat when too low
+    if (last.endY > T.groundY + 80 && (type === "downhill" || type === "gap")) {
+      type = "flat";
+    }
+
     addSegment(state, type, last.endX, last.endY);
     last = state.terrainSegments[state.terrainSegments.length - 1];
   }
@@ -130,6 +136,9 @@ export function getTerrainObstacleFrames(
   return frames;
 }
 
+const TERRAIN_Y_MIN = 180;   // don't climb above background structures
+const TERRAIN_Y_MAX = CV.height + 60;  // camera will follow; this just stops runaway drift
+
 function addSegment(
   state: GameState,
   type: TerrainSegmentType,
@@ -139,7 +148,7 @@ function addSegment(
   const id = state.nextTerrainSegmentId++;
   const dimensions = getSegmentDimensions(type, startY);
   const endX = startX + dimensions.length;
-  const endY = dimensions.endY;
+  const endY = Math.max(TERRAIN_Y_MIN, Math.min(TERRAIN_Y_MAX, dimensions.endY));
   const obstacle = createTerrainObstacle(state, type, startX, endX);
 
   state.terrainSegments.push({
