@@ -33,6 +33,7 @@ interface TerrainSampleOptions {
   preferredY?: number;
   ignoreSegmentId?: number | null;
   ignorePlatformRoute?: TerrainRoute | null;
+  stickToRoute?: TerrainRoute | null;
 }
 
 interface RoutePattern {
@@ -42,6 +43,10 @@ interface RoutePattern {
 
 const TERRAIN_Y_MIN = 180;          // don't climb above background structures
 const TERRAIN_Y_MAX = CV.height + 60; // camera follows lower terrain; this stops runaway drift
+const LOWER_RETURN_GAP = 150;
+const DEEP_RETURN_GAP = 210;
+const LOWER_RETURN_MIN_LENGTH = 320;
+const DEEP_RETURN_MIN_LENGTH = 480;
 
 const ROUTE_PATTERNS: RoutePattern[] = [
   { name: "safe-flat", build: buildSafeFlatPattern },
@@ -88,6 +93,7 @@ export function sampleTerrainAt(
 
   for (const segment of segments) {
     if (worldX < segment.startX || worldX > segment.endX) continue;
+    if (options.stickToRoute && segment.route !== options.stickToRoute) continue;
 
     if (segment.type === "gap") {
       gapSample ??= {
@@ -370,8 +376,14 @@ function buildRedDropPattern(
     riskLevel: 1,
     riskLabel: "LOW LINE",
   });
-  const lowerReturn = addSegment(state, "uphill", lowerBridge.endX, lowerBridge.endY, {
-    length: Math.max(230, safeBridge.endX - lowerBridge.endX),
+  const lowerReturnGap = addSegment(state, "gap", lowerBridge.endX, lowerBridge.endY, {
+    length: LOWER_RETURN_GAP,
+    endY: lowerBridge.endY,
+    route: "lower",
+    surfaceKind: "ground",
+  });
+  const lowerReturn = addSegment(state, "uphill", lowerReturnGap.endX, lowerReturnGap.endY, {
+    length: Math.max(LOWER_RETURN_MIN_LENGTH, safeBridge.endX - lowerReturnGap.endX),
     endY: startY,
     route: "lower",
     surfaceKind: "ground",
@@ -397,13 +409,13 @@ function buildRedDropPattern(
     riskLabel: "EXTREME LOW",
   });
   const deepGap = addSegment(state, "gap", deepHazard.endX, deepHazard.endY, {
-    length: 120,
+    length: DEEP_RETURN_GAP,
     endY: deepHazard.endY,
     route: "lower",
     surfaceKind: "ground",
   });
   const deepReturn = addSegment(state, "uphill", deepGap.endX, deepGap.endY, {
-    length: Math.max(260, safeBridge.endX - deepGap.endX),
+    length: Math.max(DEEP_RETURN_MIN_LENGTH, safeBridge.endX - deepGap.endX),
     endY: startY,
     route: "lower",
     surfaceKind: "ground",

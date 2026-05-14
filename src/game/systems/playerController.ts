@@ -1,7 +1,12 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState, PlayerState, TerrainSegment } from "../core/types";
 import type { InputState } from "./inputManager";
-import { crossedRampEnd, sampleTerrainAt, shouldIgnoreSurface } from "./terrainSystem";
+import {
+  crossedRampEnd,
+  getTerrainSegmentById,
+  sampleTerrainAt,
+  shouldIgnoreSurface,
+} from "./terrainSystem";
 
 const P = GAME_CONFIG.player;
 const J = GAME_CONFIG.jump;
@@ -86,11 +91,15 @@ function updateVerticalMovement(
   const ignorePlatformRoute = player.dropThroughTimer > 0
     ? player.dropThroughRoute
     : null;
+  const currentSegment = player.isGrounded
+    ? getTerrainSegmentById(state.terrainSegments, player.currentSegmentId)
+    : null;
   const surface = sampleTerrainAt(state.terrainSegments, nextWorldX, {
     currentSegmentId: player.currentSegmentId,
     preferredY: player.y + P.height / 2,
     ignoreSegmentId,
     ignorePlatformRoute,
+    stickToRoute: currentSegment?.route ?? null,
   });
 
   if (player.isGrounded) {
