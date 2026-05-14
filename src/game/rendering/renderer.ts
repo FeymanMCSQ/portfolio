@@ -1,8 +1,20 @@
 import { GAME_CONFIG } from "../config/gameConfig";
-import type { GameState, Shockwave, TerrainSegment } from "../core/types";
+import type { EnergyRing, GameState, Shockwave, TerrainSegment } from "../core/types";
 import { sampleTerrainAt } from "../systems/terrainSystem";
 
-const { canvas: CV, player: P, world: W, jump: J, overclock: OC, focus: FC, patchPulse: PP, pump: PU } = GAME_CONFIG;
+const {
+  canvas: CV,
+  player: P,
+  world: W,
+  jump: J,
+  overclock: OC,
+  focus: FC,
+  patchPulse: PP,
+  pump: PU,
+  routes: RC,
+  rewards: RW,
+  scoreSurge: SS,
+} = GAME_CONFIG;
 const VIEW_TOP = 64;
 const VIEW_BOTTOM = CV.height - 34;
 
@@ -169,7 +181,10 @@ export function renderFrame(
   let lowestY = state.player.surfaceY;
   if (state.player.isGrounded) {
     const playerWorldX = state.worldOffset + state.player.x;
-    const sAhead       = sampleTerrainAt(state.terrainSegments, playerWorldX + 500);
+    const sAhead       = sampleTerrainAt(state.terrainSegments, playerWorldX + 500, {
+      currentSegmentId: state.player.currentSegmentId,
+      preferredY: state.player.surfaceY,
+    });
     if (sAhead.hasSurface) lowestY = Math.max(lowestY, sAhead.y);
   }
 
@@ -201,6 +216,7 @@ export function renderFrame(
   drawBackground(ctx);
   drawBackgroundLayers(ctx, state);
   drawOverclockEdge(ctx, state);   // screen-space effects — no camera transform
+  drawScoreSurgeEdge(ctx, state);
   drawFocusEdge(ctx, state);
 
   ctx.save();
@@ -213,6 +229,8 @@ export function renderFrame(
   drawTerrain(ctx, state);
   drawProgressMarkers(ctx, state);
   drawSpeedLines(ctx, state);
+  drawEnergyRings(ctx, state);
+  drawScoreSurgeTokens(ctx, state);
   drawTokens(ctx, state);
   drawPatchTokens(ctx, state);
   drawShockwaves(ctx, state);
@@ -224,9 +242,11 @@ export function renderFrame(
   ctx.restore();
 
   drawHUD(ctx, state);
+  drawRouteFeedback(ctx, state);
   drawNearMissPopup(ctx, state);
   drawControlsHint(ctx, state);
   drawOverclockFlash(ctx, state);
+  drawScoreSurgeFlash(ctx, state);
   if (state.phase === "gameOver") drawGameOverOverlay(ctx, state);
 }
 
@@ -410,6 +430,12 @@ function drawTerrain(
   state: GameState
 ): void {
   for (const segment of state.terrainSegments) {
+    if (segment.surfaceKind !== "ground") continue;
+    drawTerrainSegment(ctx, state, segment);
+  }
+
+  for (const segment of state.terrainSegments) {
+    if (segment.surfaceKind !== "platform") continue;
     drawTerrainSegment(ctx, state, segment);
   }
 
@@ -428,6 +454,11 @@ function drawTerrainSegment(
   if (x2 < -80 || x1 > CV.width + 80) return;
   if (segment.type === "gap") {
     drawGapEdges(ctx, x1, x2, segment.startY, segment.endY);
+    return;
+  }
+
+  if (segment.surfaceKind === "platform") {
+    drawPlatformSegment(ctx, x1, x2, segment);
     return;
   }
 
@@ -457,6 +488,53 @@ function drawTerrainSegment(
   ctx.stroke();
   ctx.restore();
 
+}
+
+function drawPlatformSegment(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  x2: number,
+  segment: TerrainSegment
+): void {
+  const thickness = RC.platformThickness;
+  const isRedRamp = segment.type === "red-ramp";
+  const edgeColor = isRedRamp ? "rgba(255, 72, 64, 0.98)" : _pal.terrainEdge;
+  const glowColor = isRedRamp ? "rgba(255, 60, 55, 0.70)" : _pal.terrainGlow;
+  const fillColor = isRedRamp ? "rgba(88, 18, 26, 0.92)" : "rgba(18, 28, 52, 0.88)";
+
+  ctx.fillStyle = fillColor;
+  ctx.beginPath();
+  ctx.moveTo(x1, segment.startY);
+  ctx.lineTo(x2, segment.endY);
+  ctx.lineTo(x2, segment.endY + thickness);
+  ctx.lineTo(x1, segment.startY + thickness);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.save();
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = isRedRamp ? 14 : 7;
+  ctx.strokeStyle = edgeColor;
+  ctx.lineWidth = isRedRamp ? 4 : 2.5;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x1, segment.startY);
+  ctx.lineTo(x2, segment.endY);
+  ctx.stroke();
+  ctx.restore();
+
+  if (isRedRamp) {
+    const midX = (x1 + x2) / 2;
+    const midY = (segment.startY + segment.endY) / 2;
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+    ctx.shadowBlur = 3;
+    ctx.fillStyle = "rgba(255, 210, 200, 0.96)";
+    ctx.font = "bold 11px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText("S ↓", midX, midY - 8);
+    ctx.restore();
+  }
 }
 
 function drawGapEdges(
@@ -871,7 +949,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   ctx.fillStyle = "rgba(6, 8, 22, 0.58)";
   ctx.beginPath();
-  ctx.roundRect(CV.width - 194, 2, 186, 76, 4);
+  ctx.roundRect(CV.width - 194, 2, 186, 104, 4);
   ctx.fill();
 
   // ── Left column ──────────────────────────────────────────────────────────
@@ -994,10 +1072,13 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
 
   // Multiplier badge — cyan during overclock, normal colors otherwise
   const mult = state.multiplier;
-  const effectiveMult = state.overclockActive ? mult * OC.scoreMultiplier : mult;
+  const overclockScoreMult = state.overclockActive ? OC.scoreMultiplier : 1;
+  const surgeScoreMult = state.scoreSurgeActive ? SS.scoreSurgeMultiplier : 1;
+  const effectiveMult = mult * overclockScoreMult * surgeScoreMult;
 
   const [multBg, multFg, multGlow]: [string, string, string | null] = state.overclockActive
     ? ["rgba(0,200,255,0.18)", "rgba(0,230,255,1)", "rgba(0,200,255,0.7)"]
+    : state.scoreSurgeActive ? ["rgba(255,50,45,0.18)", "rgba(255,90,82,1)", "rgba(255,50,45,0.7)"]
     : mult === 4 ? ["rgba(255,40,20,0.22)",  "rgba(255,90,60,1)",   "rgba(255,50,20,0.7)"]
     : mult === 3 ? ["rgba(255,150,0,0.18)",  "rgba(255,190,50,1)",  "rgba(255,140,0,0.5)"]
     : mult === 2 ? ["rgba(50,200,100,0.15)", "rgba(100,230,140,1)", null]
@@ -1059,7 +1140,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.fillText(`OVERCLOCK  ${state.overclockTimer.toFixed(1)}s`, badgeX + badgeW / 2, ocBarY + ocBarH + 10);
     ctx.textAlign = "left";
     ctx.restore();
-  } else if (state.combo > 0) {
+  } else if (state.combo > 0 && !state.scoreSurgeActive) {
     ctx.save();
     ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
     ctx.shadowBlur = 2;
@@ -1067,6 +1148,36 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.font = "10px monospace";
     ctx.textAlign = "center";
     ctx.fillText(`${state.combo} COMBO`, badgeX + badgeW / 2, badgeY + badgeH + 14);
+    ctx.textAlign = "left";
+    ctx.restore();
+  }
+
+  if (state.scoreSurgeActive) {
+    const ratio = state.scoreSurgeTimer / SS.scoreSurgeDuration;
+    const surgeBarX = badgeX - 4;
+    const surgeBarW = badgeW + 8;
+    const surgeBarY = badgeY + badgeH + (state.overclockActive ? 24 : 5);
+    const surgeBarH = 4;
+    const nearEnd = state.scoreSurgeTimer < 1.5;
+    const pulse = nearEnd ? 0.55 + 0.45 * Math.sin(state.timeElapsed * 15) : 1;
+
+    ctx.fillStyle = "rgba(30, 0, 8, 0.78)";
+    ctx.fillRect(surgeBarX - 1, surgeBarY - 1, surgeBarW + 2, surgeBarH + 2);
+
+    ctx.fillStyle = `rgba(255, 64, 58, ${0.92 * pulse})`;
+    ctx.fillRect(surgeBarX, surgeBarY, surgeBarW * ratio, surgeBarH);
+
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+    ctx.shadowBlur = 2;
+    ctx.fillStyle = "rgba(255, 116, 108, 0.98)";
+    ctx.font = "9px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(
+      `SURGE x${SS.scoreSurgeMultiplier}  ${state.scoreSurgeTimer.toFixed(1)}s`,
+      badgeX + badgeW / 2,
+      surgeBarY + surgeBarH + 10
+    );
     ctx.textAlign = "left";
     ctx.restore();
   }
@@ -1098,6 +1209,30 @@ function drawNearMissPopup(ctx: CanvasRenderingContext2D, state: GameState): voi
   ctx.restore();
 }
 
+function drawRouteFeedback(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (state.routeFeedbackTimer <= 0 || !state.routeFeedbackText) return;
+
+  const t = state.routeFeedbackTimer / RW.feedbackDuration;
+  const alpha = t > 0.35 ? 0.94 : (t / 0.35) * 0.94;
+  const popY = 126 - (1 - t) * 16;
+  const isSurge = state.routeFeedbackText.includes("SURGE");
+  const isRisk = state.routeFeedbackText.includes("RISK");
+  const color = isSurge
+    ? "255, 92, 84"
+    : isRisk
+    ? "255, 205, 84"
+    : "190, 230, 255";
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.shadowColor = `rgba(${color}, ${alpha * 0.55})`;
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = `rgba(${color}, ${alpha})`;
+  ctx.font = "bold 13px monospace";
+  ctx.fillText(state.routeFeedbackText, CV.width / 2, popY);
+  ctx.restore();
+}
+
 // ─── Controls hint ───────────────────────────────────────────────────────────
 
 function drawControlsHint(
@@ -1111,11 +1246,94 @@ function drawControlsHint(
   ctx.font = "12px monospace";
   ctx.textAlign = "center";
   ctx.fillText(
-    "↑/W accelerate    SPACE jump    SHIFT focus    S pump",
+    "↑/W accelerate    SPACE jump    SHIFT focus    S pump / red drop",
     CV.width / 2,
     CV.height - 22
   );
   ctx.textAlign = "left";
+}
+
+// ─── Route rewards ───────────────────────────────────────────────────────────
+
+function drawScoreSurgeTokens(ctx: CanvasRenderingContext2D, state: GameState): void {
+  for (const token of state.scoreSurgeTokens) {
+    const screenX = token.worldX - state.worldOffset;
+    if (screenX + SS.tokenRadius < -20 || screenX - SS.tokenRadius > CV.width + 20) continue;
+    drawScoreSurgeToken(ctx, screenX, token.y, state.timeElapsed);
+  }
+}
+
+function drawScoreSurgeToken(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  t: number
+): void {
+  const pulse = 0.80 + 0.20 * Math.sin(t * 6.2);
+
+  ctx.save();
+  ctx.translate(x, y);
+
+  ctx.save();
+  ctx.shadowColor = SS.scoreSurgeVisualColor;
+  ctx.shadowBlur = 24 * pulse;
+  ctx.strokeStyle = `rgba(255, 70, 64, ${0.88 * pulse})`;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.arc(0, 0, SS.tokenRadius * pulse, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.save();
+  ctx.rotate(-Math.PI / 4 + t * 1.4);
+  ctx.fillStyle = SS.scoreSurgeVisualColor;
+  ctx.fillRect(-7, -7, 14, 14);
+  ctx.restore();
+
+  ctx.fillStyle = "rgba(255, 230, 225, 0.95)";
+  ctx.beginPath();
+  ctx.arc(0, 0, 3.5, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+function drawEnergyRings(ctx: CanvasRenderingContext2D, state: GameState): void {
+  for (const ring of state.energyRings) {
+    const screenX = ring.worldX - state.worldOffset;
+    if (screenX + ring.radiusX < -30 || screenX - ring.radiusX > CV.width + 30) continue;
+    drawEnergyRing(ctx, ring, screenX, state.timeElapsed);
+  }
+}
+
+function drawEnergyRing(
+  ctx: CanvasRenderingContext2D,
+  ring: EnergyRing,
+  x: number,
+  t: number
+): void {
+  const pulse = 0.92 + 0.08 * Math.sin(t * 4.5 + ring.id);
+
+  ctx.save();
+  ctx.translate(x, ring.y);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(255, 214, 68, 0.9)";
+  ctx.shadowBlur = 20 * pulse;
+  ctx.strokeStyle = `rgba(255, 218, 76, ${0.95 * pulse})`;
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, ring.radiusX * pulse, ring.radiusY * pulse, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.strokeStyle = "rgba(255, 255, 210, 0.50)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, ring.radiusX * 0.74, ring.radiusY * 0.74, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 // ─── Overclock token ─────────────────────────────────────────────────────────
@@ -1317,6 +1535,28 @@ function drawOverclockEdge(ctx: CanvasRenderingContext2D, state: GameState): voi
   ctx.fillRect(CV.width - depth, 0, depth, CV.height);
 }
 
+function drawScoreSurgeEdge(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (!state.scoreSurgeActive) return;
+
+  const ratio = state.scoreSurgeTimer / SS.scoreSurgeDuration;
+  const nearEnd = state.scoreSurgeTimer < 1.5;
+  const pulse = nearEnd ? 0.52 + 0.48 * Math.sin(state.timeElapsed * 15) : 1;
+  const intensity = ratio * 0.32 * pulse;
+  const color = `rgba(255, 56, 48, ${intensity})`;
+  const trans = "rgba(0, 0, 0, 0)";
+  const depth = 50;
+
+  let g = ctx.createLinearGradient(0, 0, 0, depth);
+  g.addColorStop(0, color); g.addColorStop(1, trans);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, CV.width, depth);
+
+  g = ctx.createLinearGradient(0, CV.height, 0, CV.height - depth);
+  g.addColorStop(0, color); g.addColorStop(1, trans);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, CV.height - depth, CV.width, depth);
+}
+
 // ─── Focus edge glow ─────────────────────────────────────────────────────────
 
 function drawFocusEdge(ctx: CanvasRenderingContext2D, state: GameState): void {
@@ -1355,6 +1595,13 @@ function drawOverclockFlash(ctx: CanvasRenderingContext2D, state: GameState): vo
   if (state.overclockFlash <= 0) return;
   const alpha = (state.overclockFlash / OC.flashDuration) * 0.38;
   ctx.fillStyle = `rgba(0, 220, 255, ${alpha})`;
+  ctx.fillRect(0, 0, CV.width, CV.height);
+}
+
+function drawScoreSurgeFlash(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (state.scoreSurgeFlash <= 0) return;
+  const alpha = (state.scoreSurgeFlash / SS.flashDuration) * 0.34;
+  ctx.fillStyle = `rgba(255, 56, 48, ${alpha})`;
   ctx.fillRect(0, 0, CV.width, CV.height);
 }
 

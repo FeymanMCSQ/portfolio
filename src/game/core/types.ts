@@ -17,13 +17,20 @@ export interface PlayerState {
   jumpHeld: boolean;
   overclockSpeedMult: number; // 1.0 normally, 2.0 during overclock
   justLanded: boolean;        // true for exactly one frame on touchdown
+  dropThroughSegmentId: number | null;
+  dropThroughRoute: TerrainRoute | null;
+  dropThroughTimer: number;
 }
+
+export type TerrainRoute = "main" | "upper" | "lower";
+export type TerrainSurfaceKind = "ground" | "platform";
 
 export type TerrainSegmentType =
   | "flat"
   | "uphill"
   | "downhill"
   | "small-ramp"
+  | "red-ramp"
   | "gap"
   | "flat-platform"
   | "flat-obstacle"
@@ -44,6 +51,10 @@ export interface TerrainSegment {
   endX: number;
   startY: number;
   endY: number;
+  route: TerrainRoute;
+  surfaceKind: TerrainSurfaceKind;
+  riskLevel?: number;
+  riskLabel?: string;
   obstacle?: TerrainObstacle;
 }
 
@@ -57,6 +68,21 @@ export interface PatchPulseToken {
   id: number;
   worldX: number;
   y: number;
+}
+
+export interface ScoreSurgeToken {
+  id: number;
+  worldX: number;
+  y: number;
+}
+
+export interface EnergyRing {
+  id: number;
+  worldX: number;
+  y: number;
+  radiusX: number;
+  radiusY: number;
+  bonus: number;
 }
 
 export interface Shockwave {
@@ -119,4 +145,16 @@ export interface GameState {
   nextPatchTokenId: number;
   shockwaves: Shockwave[];
   nextShockwaveId: number;
+
+  // Route rewards
+  scoreSurgeTokens: ScoreSurgeToken[];
+  nextScoreSurgeTokenId: number;
+  scoreSurgeActive: boolean;
+  scoreSurgeTimer: number;
+  scoreSurgeFlash: number;
+  energyRings: EnergyRing[];
+  nextEnergyRingId: number;
+  routeFeedbackText: string;
+  routeFeedbackTimer: number;
+  lastRiskSegmentId: number | null;
 }

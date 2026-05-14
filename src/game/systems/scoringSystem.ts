@@ -6,6 +6,13 @@ import { getTerrainObstacleFrames } from "./terrainSystem";
 const P = GAME_CONFIG.player;
 const SC = GAME_CONFIG.scoring;
 const OC = GAME_CONFIG.overclock;
+const SS = GAME_CONFIG.scoreSurge;
+
+export function getScoreGainFactor(state: GameState): number {
+  const ocFactor = state.overclockActive ? OC.scoreMultiplier : 1;
+  const surgeFactor = state.scoreSurgeActive ? SS.scoreSurgeMultiplier : 1;
+  return ocFactor * surgeFactor;
+}
 
 export function updateScore(state: GameState, dt: number): void {
   const speedRatio = state.player.speed / P.maxSpeed;
@@ -15,8 +22,7 @@ export function updateScore(state: GameState, dt: number): void {
     speedRatio >= SC.tier3 ? 3 :
     speedRatio >= SC.tier2 ? 2 : 1;
 
-  const ocFactor = state.overclockActive ? OC.scoreMultiplier : 1;
-  state.score += state.player.speed * state.multiplier * ocFactor * SC.pointsPerPx * dt;
+  state.score += state.player.speed * state.multiplier * getScoreGainFactor(state) * SC.pointsPerPx * dt;
 
   if (state.nearMissTimer > 0) {
     state.nearMissTimer = Math.max(0, state.nearMissTimer - dt);
@@ -61,9 +67,8 @@ export function checkNearMisses(state: GameState): void {
 }
 
 function awardNearMiss(state: GameState): void {
-  const ocFactor = state.overclockActive ? OC.scoreMultiplier : 1;
   const bonus = Math.round(
-    SC.nearMissBonus * state.multiplier * ocFactor * (state.combo + 1)
+    SC.nearMissBonus * state.multiplier * getScoreGainFactor(state) * (state.combo + 1)
   );
 
   state.score += bonus;

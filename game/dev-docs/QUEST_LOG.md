@@ -15,11 +15,11 @@
 | 09 | Deterministic Endless Progress | ✅ done | Removed timed win, made token spawns deterministic, persisted last/best run progress, added HUD stats and world markers |
 | 10 | Obstacle Visibility + Touch Controls | ✅ done | Draw terrain blocks after terrain fills to prevent slope occlusion; added hold-to-accelerate and tap-to-jump touch input |
 | 11 | Master Controls Overlay | ✅ done | Replaced narrow admin rail with large sectioned modal; added local/global tuning modes and dev-only source config saving |
+| 3C-1 | Risk/Reward Route Foundation | ✅ done | Added route pattern library, upper/lower overlapping route surfaces, red drop ramps, and S/down drop-through behavior |
+| 3C-2 | Route Rewards | ✅ done | Added red Score Surge, route reward scoring, Energy Ring bonuses, and HUD feedback |
+| 3C-3 | Risk/Reward Balance | ✅ done | Removed yellow orbs; made upper/lower routes multi-step, riskier, and score through survival on risky lines |
 
 ## Next quest candidates (not decided)
 
-- Difficulty curve / terrain pattern tuning
-- Difficulty curve (ramp up obstacle density / speed over time)
-- Coin / collectible row
 - More authored terrain/obstacle patterns
 - Portfolio shell (landing page, nav, about section around the game)

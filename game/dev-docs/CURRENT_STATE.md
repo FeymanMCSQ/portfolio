@@ -4,7 +4,7 @@
 
 ## Active quest
 
-None. Quest 11 (master controls overlay) just completed. Ready for the next quest.
+None. Quest 3C Phase 3 (risk/reward route balancing) just completed.
 
 ## What exists and works
 
@@ -32,6 +32,36 @@ None. Quest 11 (master controls overlay) just completed. Ready for the next ques
 - Renderer paints all terrain first and all terrain-attached blocks second, so later slope fills cannot cover obstacle blocks
 - Old lane obstacle manager/types/rendering were removed from active code
 
+### Risk/reward routes (Quest 3C Phase 1 — done)
+- Terrain generation now uses a small route pattern library instead of one flat segment-type loop
+- Active Phase 1 patterns: safe flat, upper ledge, ramp arc, red drop route, obstacle line, recovery
+- Terrain segments now carry `route: "main" | "upper" | "lower"` and `surfaceKind: "ground" | "platform"`
+- Upper ledges are temporary one-way platform segments; player can land on them from above and fall back to the main route when they end
+- Red ramps are visible platform segments marked `S ↓`
+- Pressing `S`/Down while grounded on a red ramp drops the player through the platform onto a lower downhill branch
+- Missing an upper ledge or not pressing on a red ramp keeps the run alive; the cost is route/reward opportunity, not instant death
+
+### Route rewards (Quest 3C Phase 2 — done)
+- The generic yellow collectible orbs were removed in Phase 3
+- Risk routes now award passive score while the player stays grounded on tagged risky segments
+- Upper ledges, ramp landings, deep low routes, and extreme routes use `riskLevel` metadata for score rate
+- Red Score Surge pickups remain the main visible reward on risky paths
+- Ramp reward patterns keep optional Energy Ring bonuses
+- Score Surge is a red risky-route pickup that temporarily multiplies score gain by `scoreSurgeMultiplier`
+- Score Surge affects score earned while active; progress/high-score storage still saves the resulting run score normally
+- HUD shows the effective multiplier and Score Surge timer while active
+- Short route feedback text shows line names like `HIGH LINE`, `RISK LINE`, `EXTREME LINE`, `DEEP LINE`, `RING BONUS`, or `SCORE SURGE`
+- Master controls now expose Score Surge and Route Rewards tuning values in local/global modes
+
+### Risk/reward balance (Quest 3C Phase 3 — done)
+- Route rhythm now inserts more recovery after route-choice patterns
+- Upper routes are multi-step: first high platform, upper launch ramp, hazard platform, second launch ramp, short extreme landing
+- Staying higher gives more passive score, but the platforms are shorter, include gaps, and can contain blocks
+- Ramp reward sections now include a real launch gap before a hazard landing instead of a safe continuous landing
+- Downward routes now support chained red ramps: press `S`/Down on the first red ramp for a low route, then press again on the lower red ramp for a deeper, higher-risk branch
+- Deeper lower branches include downhill speed, blocks, a gap, stronger passive score, and Score Surge placement
+- The default/safe route remains continuous and readable, with fewer forced hazards
+
 ### Deterministic endless progress (Quest 09 — done)
 - Runs are endless: the old 60-second survival win condition and `"won"` phase were removed
 - Terrain generation uses the fixed segment pattern/index, so a block or gap at a given world position appears in the same place on replay unless the config/pattern changes
@@ -48,12 +78,12 @@ None. Quest 11 (master controls overlay) just completed. Ready for the next ques
 - **No React state in game loop**: `GameState` is a plain mutable object
 - **Physics**: all delta-time multiplied; friction uses `Math.pow(friction, dt*60)`
 - **Canvas**: 900×500px, player fixed at X=210, world scrolls left
-- **Terrain**: piecewise linear side-view segments in world coordinates; player samples terrain at `worldOffset + player.x`
+- **Terrain**: piecewise linear side-view route-pattern segments in world coordinates; player samples terrain at `worldOffset + player.x`
 - **Old lane steering removed for Phase A**: A/D no longer moves the player vertically
 
 ### Side-view terrain runner (Quest 08 Phase A/B — done)
 - Added `terrain` config section: ground Y, segment lengths, slope height, ramp values, gap/platform values, obstacle block size
-- Added terrain segment types: `flat`, `uphill`, `downhill`, `small-ramp`, `gap`, `flat-platform`, `flat-obstacle`, `slope-obstacle`
+- Added terrain segment types: `flat`, `uphill`, `downhill`, `small-ramp`, `red-ramp`, `gap`, `flat-platform`, `flat-obstacle`, `slope-obstacle`
 - Added `terrainSystem.ts`: generates connected piecewise-linear terrain ahead of the camera, culls behind, samples terrain surface/angle by world X, detects ramp end crossing
 - Player is now grounded to sampled terrain while riding; `y` is actual side-view body center, not a top-down lane position
 - Jumping and ramp launch detach the player from the terrain; gravity drives airborne movement; falling through gaps detaches from ground
@@ -131,22 +161,33 @@ None. Quest 11 (master controls overlay) just completed. Ready for the next ques
   focusMeter: number
   focusActive: boolean
   focusHeld: boolean
-  patchArmed: boolean
+  pumpCooldown: number
+  pumpLandingWindow: number
+  pumpCrouchTimer: number
+  patchCount: number
   patchTokens: PatchPulseToken[] // worldX + y
   nextPatchTokenAt: number
   nextPatchTokenId: number
   shockwaves: Shockwave[] // worldX + y
   nextShockwaveId: number
+  scoreSurgeTokens: ScoreSurgeToken[]
+  nextScoreSurgeTokenId: number
+  scoreSurgeActive: boolean
+  scoreSurgeTimer: number
+  scoreSurgeFlash: number
+  energyRings: EnergyRing[]
+  nextEnergyRingId: number
+  routeFeedbackText: string
+  routeFeedbackTimer: number
+  lastRiskSegmentId: number | null
 }
 ```
 
 ## Config sections in gameConfig.ts
 
-`player`, `terrain`, `jump`, `world`, `patchPulse`, `focus`, `overclock`, `scoring` — all mutable (no `as const`)
+`player`, `terrain`, `routes`, `jump`, `world`, `patchPulse`, `focus`, `pump`, `overclock`, `scoreSurge`, `rewards`, `scoring` — all mutable (no `as const`)
 
 ## Pending / not yet built
 
-- Difficulty scaling / terrain pattern tuning
-- Difficulty scaling (obstacle density doesn't ramp up yet)
 - Sound / music
 - Portfolio pages around the game

@@ -52,6 +52,14 @@ type PumpKey =
   | "cooldown"
   | "duration";
 
+type ScoreSurgeKey =
+  | "scoreSurgeMultiplier"
+  | "scoreSurgeDuration";
+
+type RewardKey =
+  | "riskScorePerSecond"
+  | "ringBonus";
+
 type SliderKey =
   | PlayerKey
   | TerrainKey
@@ -60,9 +68,11 @@ type SliderKey =
   | OverclockKey
   | FocusKey
   | PatchPulseKey
-  | PumpKey;
+  | PumpKey
+  | ScoreSurgeKey
+  | RewardKey;
 
-type ConfigTarget = "player" | "terrain" | "jump" | "scoring" | "overclock" | "focus" | "patchPulse" | "pump";
+type ConfigTarget = "player" | "terrain" | "jump" | "scoring" | "overclock" | "focus" | "patchPulse" | "pump" | "scoreSurge" | "rewards";
 type AdminMode = "local" | "global";
 type AllValues = Record<ConfigTarget, Record<string, number>>;
 
@@ -129,6 +139,16 @@ const PUMP_DEFAULTS: Record<PumpKey, number> = {
   duration:      GAME_CONFIG.pump.duration,
 };
 
+const SCORE_SURGE_DEFAULTS: Record<ScoreSurgeKey, number> = {
+  scoreSurgeMultiplier: GAME_CONFIG.scoreSurge.scoreSurgeMultiplier,
+  scoreSurgeDuration: GAME_CONFIG.scoreSurge.scoreSurgeDuration,
+};
+
+const REWARD_DEFAULTS: Record<RewardKey, number> = {
+  riskScorePerSecond: GAME_CONFIG.rewards.riskScorePerSecond,
+  ringBonus: GAME_CONFIG.rewards.ringBonus,
+};
+
 const SCORING_DEFAULTS: Record<ScoringKey, number> = {
   pointsPerPx: GAME_CONFIG.scoring.pointsPerPx,
   nearMissBonus: GAME_CONFIG.scoring.nearMissBonus,
@@ -149,6 +169,8 @@ function cloneDefaults(): AllValues {
     focus:      { ...FOCUS_DEFAULTS },
     patchPulse: { ...PATCH_PULSE_DEFAULTS },
     pump:       { ...PUMP_DEFAULTS },
+    scoreSurge: { ...SCORE_SURGE_DEFAULTS },
+    rewards:    { ...REWARD_DEFAULTS },
   };
 }
 
@@ -192,6 +214,22 @@ const SECTIONS: Section[] = [
       { key: "speedMultiplier", target: "overclock", label: "Speed Cap", min: 1.2, max: 4.0, step: 0.1, format: (v) => `×${v.toFixed(1)}` },
       { key: "scoreMultiplier", target: "overclock", label: "Score", min: 1, max: 6, step: 1, format: (v) => `×${v}` },
       { key: "tokenSpacing", target: "overclock", label: "Token Gap", min: 1200, max: 7000, step: 100, format: (v) => `${v} px` },
+    ],
+  },
+  {
+    title: "Score Surge",
+    summary: "Red risky-route token multiplier and duration.",
+    sliders: [
+      { key: "scoreSurgeMultiplier", target: "scoreSurge", label: "Score Mult", min: 1, max: 5, step: 0.5, format: (v) => `×${v}` },
+      { key: "scoreSurgeDuration", target: "scoreSurge", label: "Duration", min: 2, max: 12, step: 0.5, format: (v) => `${v} s` },
+    ],
+  },
+  {
+    title: "Route Rewards",
+    summary: "Passive score for risky route survival plus ring bonus.",
+    sliders: [
+      { key: "riskScorePerSecond", target: "rewards", label: "Risk / sec", min: 0, max: 180, step: 5, format: (v) => `${v}/s` },
+      { key: "ringBonus", target: "rewards", label: "Ring Bonus", min: 100, max: 2000, step: 50, format: (v) => String(v) },
     ],
   },
   {
@@ -625,6 +663,10 @@ function getRuntimeTarget(target: ConfigTarget): Record<string, number> {
       return GAME_CONFIG.focus as Record<string, number>;
     case "pump":
       return GAME_CONFIG.pump as Record<string, number>;
+    case "scoreSurge":
+      return GAME_CONFIG.scoreSurge as unknown as Record<string, number>;
+    case "rewards":
+      return GAME_CONFIG.rewards as Record<string, number>;
   }
 }
 
@@ -638,6 +680,8 @@ function toConfigPatch(values: AllValues): Record<ConfigTarget, Record<string, n
     focus: {},
     patchPulse: {},
     pump: {},
+    scoreSurge: {},
+    rewards: {},
   };
 
   for (const section of SECTIONS) {

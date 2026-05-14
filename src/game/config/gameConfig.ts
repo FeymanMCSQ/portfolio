@@ -34,6 +34,15 @@ export const GAME_CONFIG = {
     obstacleHeight: 46,
   },
 
+  routes: {
+    upperLedgeHeight: 92,
+    dropRouteDepth: 104,
+    redRampLength: 220,
+    platformThickness: 16,
+    dropThroughDuration: 0.55,
+    dropVelocity: 180,
+  },
+
   jump: {
     baseVelocity: 420,          // px/s upward at zero forward speed
     speedBonus: 220,            // extra px/s added at maxSpeed (scales linearly)
@@ -91,6 +100,24 @@ export const GAME_CONFIG = {
     tokenSpacing: 3700,      // deterministic worldOffset gap between token spawns
     graceDistance: 2200,     // no tokens before this worldOffset
     flashDuration: 0.14,     // screen flash duration on collection
+  },
+
+  scoreSurge: {
+    scoreSurgeMultiplier: 2,  // temporary score gain multiplier
+    scoreSurgeDuration: 6,    // seconds after collecting a red surge token
+    scoreSurgeSpawnRules: "risky-routes-only",
+    scoreSurgeVisualColor: "rgba(255, 56, 48, 0.98)",
+    tokenRadius: 15,
+    flashDuration: 0.18,
+  },
+
+  rewards: {
+    riskScorePerSecond: 55,
+    ringBonus: 650,
+    ringRadiusX: 42,
+    ringRadiusY: 54,
+    cullBehind: 320,
+    feedbackDuration: 1.1,
   },
 
 };

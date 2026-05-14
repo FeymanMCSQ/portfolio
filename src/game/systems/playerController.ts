@@ -1,7 +1,7 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState, PlayerState, TerrainSegment } from "../core/types";
 import type { InputState } from "./inputManager";
-import { crossedRampEnd, sampleTerrainAt } from "./terrainSystem";
+import { crossedRampEnd, sampleTerrainAt, shouldIgnoreSurface } from "./terrainSystem";
 
 const P = GAME_CONFIG.player;
 const J = GAME_CONFIG.jump;
@@ -25,6 +25,9 @@ export function createPlayerState(): PlayerState {
     jumpHeld: false,
     overclockSpeedMult: 1,
     justLanded: false,
+    dropThroughSegmentId: null,
+    dropThroughRoute: null,
+    dropThroughTimer: 0,
   };
 }
 
@@ -72,11 +75,23 @@ function updateVerticalMovement(
 ): void {
   const { player } = state;
   player.justLanded = false;  // clear each frame; set below on the landing frame
+  updateDropThroughTimer(player, dt);
 
   // Rising-edge detection: only fire on the frame the key transitions to pressed
   const jumpPressed = input.jump && !player.jumpHeld;
   player.jumpHeld = input.jump;
-  const surface = sampleTerrainAt(state.terrainSegments, nextWorldX);
+  const ignoreSegmentId = player.dropThroughTimer > 0
+    ? player.dropThroughSegmentId
+    : null;
+  const ignorePlatformRoute = player.dropThroughTimer > 0
+    ? player.dropThroughRoute
+    : null;
+  const surface = sampleTerrainAt(state.terrainSegments, nextWorldX, {
+    currentSegmentId: player.currentSegmentId,
+    preferredY: player.y + P.height / 2,
+    ignoreSegmentId,
+    ignorePlatformRoute,
+  });
 
   if (player.isGrounded) {
     // Advance landing squash timer
@@ -95,7 +110,12 @@ function updateVerticalMovement(
       return;
     }
 
-    const ramp = crossedRampEnd(state.terrainSegments, previousWorldX, nextWorldX);
+    const ramp = crossedRampEnd(
+      state.terrainSegments,
+      previousWorldX,
+      nextWorldX,
+      player.currentSegmentId
+    );
     if (ramp) {
       const speedRatio = player.speed / P.maxSpeed;
       player.y = ramp.endY - P.height / 2;
@@ -132,7 +152,11 @@ function updateVerticalMovement(
       nextWorldX,
       previousFootY,
       footY,
-      player.verticalVelocity
+      player.verticalVelocity,
+      {
+        ignoreSegmentId,
+        ignorePlatformRoute,
+      }
     );
 
     if (landing) {
@@ -148,6 +172,16 @@ function updateVerticalMovement(
   }
 }
 
+function updateDropThroughTimer(player: PlayerState, dt: number): void {
+  if (player.dropThroughTimer <= 0) return;
+
+  player.dropThroughTimer = Math.max(0, player.dropThroughTimer - dt);
+  if (player.dropThroughTimer === 0) {
+    player.dropThroughSegmentId = null;
+    player.dropThroughRoute = null;
+  }
+}
+
 interface LandingSurface {
   y: number;
   angle: number;
@@ -160,13 +194,17 @@ function findLandingSurface(
   nextWorldX: number,
   previousFootY: number,
   footY: number,
-  verticalVelocity: number
+  verticalVelocity: number,
+  options: {
+    ignoreSegmentId?: number | null;
+    ignorePlatformRoute?: TerrainSegment["route"] | null;
+  } = {}
 ): LandingSurface | null {
   if (verticalVelocity < 0) return null;
 
   const dx = nextWorldX - previousWorldX;
   if (Math.abs(dx) < 0.001) {
-    const surface = sampleTerrainAt(segments, nextWorldX);
+    const surface = sampleTerrainAt(segments, nextWorldX, options);
     if (
       surface.hasSurface &&
       surface.segment &&
@@ -185,8 +223,11 @@ function findLandingSurface(
   const minX = Math.min(previousWorldX, nextWorldX);
   const maxX = Math.max(previousWorldX, nextWorldX);
 
+  let bestLanding: (LandingSurface & { motionT: number }) | null = null;
+
   for (const segment of segments) {
     if (segment.type === "gap") continue;
+    if (shouldIgnoreSurface(segment, options)) continue;
     if (segment.endX < minX || segment.startX > maxX) continue;
 
     const overlapStartX = Math.max(minX, segment.startX);
@@ -212,15 +253,20 @@ function findLandingSurface(
       const denom = endDiff - startDiff;
       const t = Math.abs(denom) < 0.001 ? 1 : -startDiff / denom;
       const landingX = overlapStartX + (overlapEndX - overlapStartX) * t;
-      return {
+      const motionT = (landingX - previousWorldX) / (nextWorldX - previousWorldX);
+      const landing = {
         y: surfaceYAtX(segment, landingX),
         angle: Math.atan2(segment.endY - segment.startY, segment.endX - segment.startX),
         segment,
+        motionT,
       };
+      if (!bestLanding || landing.motionT < bestLanding.motionT) {
+        bestLanding = landing;
+      }
     }
   }
 
-  return null;
+  return bestLanding;
 }
 
 function footAtX(

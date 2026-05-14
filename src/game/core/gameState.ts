@@ -38,5 +38,15 @@ export function createInitialGameState(): GameState {
     nextPatchTokenId: 0,
     shockwaves: [],
     nextShockwaveId: 0,
+    scoreSurgeTokens: [],
+    nextScoreSurgeTokenId: 0,
+    scoreSurgeActive: false,
+    scoreSurgeTimer: 0,
+    scoreSurgeFlash: 0,
+    energyRings: [],
+    nextEnergyRingId: 0,
+    routeFeedbackText: "",
+    routeFeedbackTimer: 0,
+    lastRiskSegmentId: null,
   };
 }

@@ -6,6 +6,7 @@ import { updateTokens, updateOverclock } from "../systems/tokenManager";
 import { updateFocus } from "../systems/focusSystem";
 import { updatePatchPulse } from "../systems/patchPulseSystem";
 import { updatePump } from "../systems/pumpSystem";
+import { updateRewards } from "../systems/rewardSystem";
 import { recordRunProgress } from "../systems/progressStorage";
 import { renderFrame } from "../rendering/renderer";
 import { createInitialGameState } from "./gameState";
@@ -55,6 +56,7 @@ export function createGameLoop(
       updateTokens(state, physDt);
       updatePatchPulse(state, patchPressed, physDt);
       updatePump(state, pumpPressed, physDt);
+      updateRewards(state, dt);
       updateScore(state, physDt);
       checkNearMisses(state);
 

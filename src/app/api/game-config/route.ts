@@ -20,6 +20,8 @@ const WRITABLE_KEYS: Record<string, string[]> = {
     "tier4",
   ],
   overclock: ["duration", "speedMultiplier", "scoreMultiplier", "tokenSpacing"],
+  scoreSurge: ["scoreSurgeMultiplier", "scoreSurgeDuration"],
+  rewards: ["riskScorePerSecond", "ringBonus"],
   focus: ["fillRate", "drainRate", "timeScale"],
   patchPulse: ["shockwaveBaseRadius", "shockwaveRadiusBonus", "shockwaveDuration"],
   pump: ["landingWindow", "cooldown", "duration"],
