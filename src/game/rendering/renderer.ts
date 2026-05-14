@@ -19,22 +19,101 @@ const BOARD = {
   wheelBX: -12,  // back wheel X (left)
 };
 
-const BG = {
-  skyTop:         "#b2a8d2",
-  skyMid:         "#becade",
-  skyHorizon:     "#cedad8",
+// ─── Deterministic score-interval palette ────────────────────────────────────
 
-  farFill:        "rgba(160, 144, 192, 0.50)",
-  farRingStroke:  "rgba(160, 144, 192, 0.28)",
-  midFill:        "rgba(82, 132, 150, 0.60)",
-  nearFill:       "rgba(92, 124, 100, 0.70)",
+interface Palette {
+  skyTop: string; skyMid: string; skyHorizon: string; skyBottom: string;
+  farFill: string; farRingStroke: string; midFill: string; nearFill: string;
+  terrainBody: string; terrainEdge: string; terrainGlow: string;
+  terrainRampEdge: string; terrainRampGlow: string; gapEdge: string;
+  obstacleBody: string; obstacleTopStripe: string;
+  obstacleEdge: string; obstacleShadow: string;
+  obstacleGlowColor: string; obstacleCrossRgba: string;
+  truckColor: string; deckColor: string; deckGlowColor: string;
+  iridescentARgb: string; iridescentBRgb: string;
+  wheelColor: string;
+  accentRgb: string;   // "r,g,b" — for rgba() in trail / ring / landing particles
+  bgTintRgb: string;   // "r,g,b" — for rgba() in speed lines / dust particles
+}
 
-  terrainBody:    "#182436",
-  terrainEdge:    "#40c8b0",
-  terrainGlow:    "rgba(54, 192, 164, 0.55)",
-  terrainRampEdge: "#58dcc0",
-  terrainRampGlow: "rgba(74, 212, 184, 0.65)",
-};
+function ihash(n: number): number {
+  n = Math.imul(n ^ (n >>> 16), 0x45d9f3b) | 0;
+  n = Math.imul(n ^ (n >>> 16), 0x45d9f3b) | 0;
+  return (n ^ (n >>> 16)) >>> 0;
+}
+
+function hslToRgb(h: number, s: number, l: number): [number, number, number] {
+  h = ((h % 360) + 360) % 360;
+  s /= 100; l /= 100;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n: number): number => {
+    const k = (n + h / 30) % 12;
+    return Math.round((l - a * Math.max(-1, Math.min(k - 3, Math.min(9 - k, 1)))) * 255);
+  };
+  return [f(0), f(8), f(4)];
+}
+
+function buildPalette(idx: number): Palette {
+  const h0 = ihash(idx + 1);  // +1 avoids degenerate zero seed
+  const h1 = ihash(h0);
+
+  // Derive independent hue angles from hash bits
+  const baseH    = (h0 & 0x1FF) / 512 * 360;
+  const terrainH = (baseH + 150 + ((h0 >>> 9)  & 0x3F) / 64 * 60) % 360; // 150-210° away
+  const accentH  = (baseH + 90  + ((h0 >>> 15) & 0x3F) / 64 * 90) % 360; // 90-180° away
+  const obstH    = (baseH + 180 + ((h0 >>> 21) & 0x1F) / 32 * 60) % 360; // complementary ±30
+  const bgTintH  = (baseH + 20  + (h1 & 0x3F)  / 64 * 40) % 360;
+
+  const skyS = 20 + ((h1 >>> 6)  & 0x1F) / 32 * 25; // 20-45 %
+  const skyL = 72 + ((h1 >>> 11) & 0x0F) / 16 * 12; // 72-84 %
+
+  const hs  = (h: number, s: number, l: number) =>
+    `hsl(${Math.round(((h % 360) + 360) % 360)},${Math.round(s)}%,${Math.round(l)}%)`;
+  const hsa = (h: number, s: number, l: number, a: number) =>
+    `hsla(${Math.round(((h % 360) + 360) % 360)},${Math.round(s)}%,${Math.round(l)}%,${a})`;
+
+  const [ar, ag, ab] = hslToRgb(accentH, 78, 55);
+  const [br, bg, bb] = hslToRgb(bgTintH, 40, 72);
+  const iriA = hslToRgb(accentH, 100, 60);
+  const iriB = hslToRgb((accentH + 180) % 360, 100, 55);
+
+  return {
+    skyTop:     hs(baseH,        skyS,      skyL),
+    skyMid:     hs(baseH + 15,   skyS - 4,  skyL - 7),
+    skyHorizon: hs(accentH,      skyS - 8,  skyL - 3),
+    skyBottom:  hs(accentH + 15, skyS - 10, skyL - 5),
+
+    farFill:       hsa(baseH,    28, 55, 0.50),
+    farRingStroke: hsa(baseH,    22, 55, 0.28),
+    midFill:       hsa(terrainH, 33, 42, 0.60),
+    nearFill:      hsa(accentH,  28, 44, 0.70),
+
+    terrainBody:     hs(terrainH,       38, 11),
+    terrainEdge:     hs(accentH,        80, 56),
+    terrainGlow:     hsa(accentH,       80, 56, 0.55),
+    terrainRampEdge: hs(accentH + 15,   75, 62),
+    terrainRampGlow: hsa(accentH + 15,  75, 62, 0.65),
+    gapEdge:         hsa(obstH,         70, 60, 0.70),
+
+    obstacleBody:      hs(obstH,       55, 48),
+    obstacleTopStripe: hs(obstH + 20,  70, 60),
+    obstacleEdge:      hs(obstH - 20,  50, 25),
+    obstacleShadow:    hsa(obstH - 20, 50, 25, 0.55),
+    obstacleGlowColor: hs(obstH,       60, 50),
+    obstacleCrossRgba: hsa(obstH + 30, 80, 75, 0.52),
+
+    truckColor:    hs(baseH,   18, 32),
+    deckColor:     hs(baseH,   25, 12),
+    deckGlowColor: hs(accentH, 90, 55),
+
+    iridescentARgb: `${iriA[0]},${iriA[1]},${iriA[2]}`,
+    iridescentBRgb: `${iriB[0]},${iriB[1]},${iriB[2]}`,
+    wheelColor:     hs(baseH + 30, 20, 80),
+
+    accentRgb: `${ar},${ag},${ab}`,
+    bgTintRgb:  `${br},${bg},${bb}`,
+  };
+}
 
 // ─── Renderer-local juice state (no GameState mutation) ───────────────────────
 
@@ -53,8 +132,10 @@ let _prevPhase       = "idle";
 let _shakeTimer      = 0;
 let _dustTimer       = 0;
 let _cameraY         = 0;
-const _SHAKE_DUR     = 0.32;
-const CAMERA_GROUND_Y = GAME_CONFIG.terrain.groundY; // terrain natural screen Y — camera offset = 0 here
+let _palInterval     = -1;
+let _pal: Palette    = buildPalette(0);
+const _SHAKE_DUR      = 0.32;
+const CAMERA_GROUND_Y = GAME_CONFIG.terrain.groundY;
 
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
@@ -109,6 +190,13 @@ export function renderFrame(
     }
   }
 
+  // Palette — rebuild when score crosses a 20 000-point interval boundary
+  const palInterval = Math.floor(state.score / 20000);
+  if (palInterval !== _palInterval) {
+    _palInterval = palInterval;
+    _pal = buildPalette(palInterval);
+  }
+
   ctx.clearRect(0, 0, CV.width, CV.height);
   drawBackground(ctx);
   drawBackgroundLayers(ctx, state);
@@ -145,10 +233,10 @@ export function renderFrame(
 
 function drawBackground(ctx: CanvasRenderingContext2D): void {
   const grad = ctx.createLinearGradient(0, 0, 0, CV.height);
-  grad.addColorStop(0,    BG.skyTop);
-  grad.addColorStop(0.48, BG.skyMid);
-  grad.addColorStop(0.82, BG.skyHorizon);
-  grad.addColorStop(1,    "#c4d4d0");
+  grad.addColorStop(0,    _pal.skyTop);
+  grad.addColorStop(0.48, _pal.skyMid);
+  grad.addColorStop(0.82, _pal.skyHorizon);
+  grad.addColorStop(1,    _pal.skyBottom);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, CV.width, CV.height);
 }
@@ -176,7 +264,7 @@ function drawFarLayer(ctx: CanvasRenderingContext2D, worldOffset: number): void 
   const bgOff   = (worldOffset * 0.04) % tileW;
 
   for (let tx = -bgOff; tx < CV.width + tileW; tx += tileW) {
-    ctx.fillStyle = BG.farFill;
+    ctx.fillStyle = _pal.farFill;
 
     // Rolling dune horizon — smooth polygon from hill crests down to canvas bottom
     ctx.beginPath();
@@ -218,7 +306,7 @@ function drawFarLayer(ctx: CanvasRenderingContext2D, worldOffset: number): void 
     ctx.fillRect(tx + 1834, 241, 18,  10);
 
     // Orbital ring — faint flattened ellipse high in sky
-    ctx.strokeStyle = BG.farRingStroke;
+    ctx.strokeStyle = _pal.farRingStroke;
     ctx.lineWidth = 3;
     ctx.save();
     ctx.translate(tx + 840, 136);
@@ -235,7 +323,7 @@ function drawMidLayer(ctx: CanvasRenderingContext2D, worldOffset: number): void 
   const bgOff = (worldOffset * 0.15) % tileW;
 
   for (let tx = -bgOff; tx < CV.width + tileW; tx += tileW) {
-    ctx.fillStyle = BG.midFill;
+    ctx.fillStyle = _pal.midFill;
 
     // Ruined arch — annular stone crown + two pillars
     const acx    = tx + 228;
@@ -281,7 +369,7 @@ function drawNearLayer(ctx: CanvasRenderingContext2D, worldOffset: number): void
   const bgOff = (worldOffset * 0.28) % tileW;
 
   for (let tx = -bgOff; tx < CV.width + tileW; tx += tileW) {
-    ctx.fillStyle = BG.nearFill;
+    ctx.fillStyle = _pal.nearFill;
 
     // Organic rock formation (main)
     ctx.beginPath();
@@ -345,7 +433,7 @@ function drawTerrainSegment(
   // Terrain body — deep slate fill
   // fillBottom must account for camera offset so the body always reaches the screen edge.
   const fillBottom = CV.height - _cameraY;
-  ctx.fillStyle = BG.terrainBody;
+  ctx.fillStyle = _pal.terrainBody;
   ctx.beginPath();
   ctx.moveTo(x1, segment.startY);
   ctx.lineTo(x2, segment.endY);
@@ -357,9 +445,9 @@ function drawTerrainSegment(
   // Glowing top edge
   const isRamp = segment.type === "small-ramp";
   ctx.save();
-  ctx.shadowColor = isRamp ? BG.terrainRampGlow : BG.terrainGlow;
+  ctx.shadowColor = isRamp ? _pal.terrainRampGlow : _pal.terrainGlow;
   ctx.shadowBlur  = isRamp ? 10 : 7;
-  ctx.strokeStyle = isRamp ? BG.terrainRampEdge : BG.terrainEdge;
+  ctx.strokeStyle = isRamp ? _pal.terrainRampEdge : _pal.terrainEdge;
   ctx.lineWidth   = isRamp ? 3 : 2.5;
   ctx.lineCap     = "round";
   ctx.beginPath();
@@ -377,7 +465,7 @@ function drawGapEdges(
   y1: number,
   y2: number
 ): void {
-  ctx.strokeStyle = "rgba(255, 160, 70, 0.7)";
+  ctx.strokeStyle = _pal.gapEdge;
   ctx.lineWidth = 3;
   ctx.beginPath();
   ctx.moveTo(x1, y1);
@@ -413,30 +501,30 @@ function drawTerrainObstacle(
   ctx.translate(screenX, surfaceY);
   ctx.rotate(angle);
 
-  // Warm ambient glow
+  // Ambient glow + body
   ctx.save();
-  ctx.shadowColor = "rgba(240, 120, 40, 0.55)";
+  ctx.shadowColor = _pal.obstacleGlowColor;
   ctx.shadowBlur = 14;
-  ctx.fillStyle = "#d87840";
+  ctx.fillStyle = _pal.obstacleBody;
   ctx.fillRect(-w / 2, -h, w, h);
   ctx.restore();
 
   // Left shadow edge
-  ctx.fillStyle = "#804030";
+  ctx.fillStyle = _pal.obstacleEdge;
   ctx.fillRect(-w / 2, -h, 3, h);
 
   // Bottom shadow band
-  ctx.fillStyle = "rgba(100, 40, 20, 0.55)";
+  ctx.fillStyle = _pal.obstacleShadow;
   ctx.fillRect(-w / 2, -5, w, 5);
 
   // Top highlight stripe
-  ctx.fillStyle = "#f09840";
+  ctx.fillStyle = _pal.obstacleTopStripe;
   ctx.fillRect(-w / 2, -h, w, 3);
 
   // Hazard cross
   const armW = 4;
   const armL = 12;
-  ctx.fillStyle = "rgba(255, 220, 140, 0.52)";
+  ctx.fillStyle = _pal.obstacleCrossRgba;
   ctx.fillRect(-armW / 2, -h / 2 - armL / 2, armW, armL);
   ctx.fillRect(-armL / 2, -h / 2 - armW / 2, armL, armW);
 
@@ -549,7 +637,7 @@ function drawSpeedLines(
     if (x < -len || x > CV.width + len) continue;
 
     const alpha = intensity * 0.38 * (0.55 + 0.45 * slot.tY);
-    ctx.strokeStyle = `rgba(186, 174, 222, ${alpha})`;
+    ctx.strokeStyle = `rgba(${_pal.bgTintRgb},${alpha})`;
     ctx.lineWidth = slot.thickEvery ? 1.5 : 1;
     ctx.beginPath();
     ctx.moveTo(x, y);
@@ -620,8 +708,8 @@ function drawPlayer(
       -BOARD.deckW / 2 - trailLen, 0,
       -BOARD.deckW / 2, 0
     );
-    tGrad.addColorStop(0, "rgba(60, 196, 172, 0)");
-    tGrad.addColorStop(1, `rgba(60, 196, 172, ${speedRatio * 0.36})`);
+    tGrad.addColorStop(0, `rgba(${_pal.accentRgb},0)`);
+    tGrad.addColorStop(1, `rgba(${_pal.accentRgb},${speedRatio * 0.36})`);
     ctx.fillStyle = tGrad;
     ctx.fillRect(
       -BOARD.deckW / 2 - trailLen,
@@ -634,7 +722,7 @@ function drawPlayer(
   // ── Trucks ────────────────────────────────────────────────────────────────
   const truckTop = BOARD.deckTop + BOARD.deckH;
   const truckH   = BOARD.wheelY - BOARD.wheelR - truckTop;
-  ctx.fillStyle = "#4a4a58";
+  ctx.fillStyle = _pal.truckColor;
   ctx.fillRect(BOARD.wheelFX - 3, truckTop, 6, truckH);
   ctx.fillRect(BOARD.wheelBX - 3, truckTop, 6, truckH);
 
@@ -642,25 +730,25 @@ function drawPlayer(
   ctx.save();
   if (speedRatio > 0.50) {
     const glow = (speedRatio - 0.50) / 0.50;
-    ctx.shadowColor = `rgba(60, 200, 176, ${glow * 0.80})`;
+    ctx.shadowColor = `rgba(${_pal.accentRgb},${glow * 0.80})`;
     ctx.shadowBlur  = 10 * glow;
   }
-  ctx.fillStyle = "#1a1a2e";
+  ctx.fillStyle = _pal.deckColor;
   ctx.fillRect(-BOARD.deckW / 2, BOARD.deckTop, BOARD.deckW, BOARD.deckH);
   ctx.restore();
 
   // ── Iridescent stripe overlay on deck ────────────────────────────────────
   const iGrad = ctx.createLinearGradient(-BOARD.deckW / 2, 0, BOARD.deckW / 2, 0);
-  iGrad.addColorStop(0,    "rgba(0, 229, 255, 0)");
-  iGrad.addColorStop(0.26, "rgba(0, 229, 255, 0.72)");
-  iGrad.addColorStop(0.56, "rgba(210, 40, 255, 0.65)");
-  iGrad.addColorStop(0.80, "rgba(0, 229, 255, 0.42)");
-  iGrad.addColorStop(1,    "rgba(0, 229, 255, 0)");
+  iGrad.addColorStop(0,    `rgba(${_pal.iridescentARgb},0)`);
+  iGrad.addColorStop(0.26, `rgba(${_pal.iridescentARgb},0.72)`);
+  iGrad.addColorStop(0.56, `rgba(${_pal.iridescentBRgb},0.65)`);
+  iGrad.addColorStop(0.80, `rgba(${_pal.iridescentARgb},0.42)`);
+  iGrad.addColorStop(1,    `rgba(${_pal.iridescentARgb},0)`);
   ctx.fillStyle = iGrad;
   ctx.fillRect(-BOARD.deckW / 2, BOARD.deckTop, BOARD.deckW, BOARD.deckH);
 
   // ── Wheels ────────────────────────────────────────────────────────────────
-  ctx.fillStyle = "#d4d0b8";
+  ctx.fillStyle = _pal.wheelColor;
   ctx.beginPath();
   ctx.arc(BOARD.wheelFX, BOARD.wheelY, BOARD.wheelR, 0, Math.PI * 2);
   ctx.fill();
@@ -693,7 +781,7 @@ function drawLandingRing(
   const radius = t * 48;
   const alpha = (1 - t) * 0.7;
 
-  ctx.strokeStyle = `rgba(60, 200, 176, ${alpha})`;
+  ctx.strokeStyle = `rgba(${_pal.accentRgb},${alpha})`;
   ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.arc(x, surfaceY, radius, 0, Math.PI * 2);
@@ -1203,8 +1291,8 @@ function updateAndDrawParticles(ctx: CanvasRenderingContext2D, dt: number): void
 
     const alpha = p.life * (p.kind === "landing" ? 0.72 : 0.45);
     ctx.fillStyle = p.kind === "landing"
-      ? `rgba(60, 200, 176, ${alpha})`
-      : `rgba(186, 174, 222, ${alpha})`;
+      ? `rgba(${_pal.accentRgb},${alpha})`
+      : `rgba(${_pal.bgTintRgb},${alpha})`;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
     ctx.fill();
