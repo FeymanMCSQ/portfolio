@@ -799,27 +799,46 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   const { speed, distanceTraveled, isGrounded, jumpHeight } = state.player;
   const speedRatio = speed / P.maxSpeed;
 
+  // ── Backing panels ───────────────────────────────────────────────────────
+  ctx.fillStyle = "rgba(6, 8, 22, 0.58)";
+  ctx.beginPath();
+  ctx.roundRect(8, 6, 142, 102, 4);
+  ctx.fill();
+
+  ctx.fillStyle = "rgba(6, 8, 22, 0.58)";
+  ctx.beginPath();
+  ctx.roundRect(CV.width - 194, 2, 186, 76, 4);
+  ctx.fill();
+
   // ── Left column ──────────────────────────────────────────────────────────
 
   // Score — hero element
-  ctx.fillStyle = "rgba(255, 240, 180, 0.95)";
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+  ctx.shadowBlur = 4;
+  ctx.fillStyle = "rgba(255, 245, 200, 1.0)";
   ctx.font = "bold 20px monospace";
   ctx.fillText(fmtScore(state.score), 18, 24);
+  ctx.restore();
 
   // Distance + persistent bests
-  ctx.fillStyle = "rgba(100, 120, 170, 0.7)";
-  ctx.font = "10px monospace";
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+  ctx.shadowBlur = 2;
+  ctx.font = "11px monospace";
+  ctx.fillStyle = "rgba(175, 195, 235, 0.97)";
   ctx.fillText(`${Math.round(distanceTraveled)} m`, 18, 38);
-  ctx.fillStyle = "rgba(255, 220, 90, 0.75)";
+  ctx.fillStyle = "rgba(255, 220, 90, 0.97)";
   ctx.fillText(`BEST ${fmtScore(state.progress.bestScore)}`, 18, 53);
-  ctx.fillStyle = "rgba(120, 190, 255, 0.65)";
+  ctx.fillStyle = "rgba(160, 210, 255, 0.90)";
   ctx.fillText(`BEST DIST ${Math.round(state.progress.bestDistance)}m`, 18, 67);
+  ctx.restore();
 
   // Airborne height (dev aid)
   if (!isGrounded) {
-    ctx.fillStyle = "rgba(160, 210, 255, 0.6)";
+    ctx.fillStyle = "rgba(160, 210, 255, 0.80)";
     ctx.font = "10px monospace";
-    ctx.fillText(`↑ ${Math.round(jumpHeight)} px`, 18, 96);
+    ctx.fillText(`↑ ${Math.round(jumpHeight)} px`, 18, 76);
   }
 
   // Focus meter
@@ -857,22 +876,30 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     : focusFull
     ? "FOCUS  SHIFT"
     : "FOCUS";
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+  ctx.shadowBlur = 2;
   ctx.fillStyle = focusFull || state.focusActive
-    ? "rgba(255, 195, 50, 0.9)"
-    : "rgba(160, 120, 50, 0.7)";
+    ? "rgba(255, 205, 65, 0.98)"
+    : "rgba(195, 150, 70, 0.95)";
   ctx.font = "10px monospace";
   ctx.fillText(focusLabel, focusBarX, focusBarY - 4);
+  ctx.restore();
 
-  // Patch armed indicator
-  if (state.patchArmed) {
-    const pulse = 0.7 + 0.3 * Math.sin(state.timeElapsed * 4.5);
+  // Patch inventory
+  if (state.patchCount > 0) {
+    const pulse = 0.75 + 0.25 * Math.sin(state.timeElapsed * 4.5);
     ctx.save();
     ctx.shadowColor = "rgba(60, 255, 120, 0.7)";
     ctx.shadowBlur = 6;
-    ctx.fillStyle = `rgba(80, 255, 140, ${0.9 * pulse})`;
+    ctx.fillStyle = `rgba(80, 255, 140, ${pulse})`;
     ctx.font = "10px monospace";
-    ctx.fillText("PATCH  LAND TO FIRE", focusBarX, focusBarY + 18);
+    ctx.fillText(`[E] PATCH  ×${state.patchCount}`, focusBarX, focusBarY + 18);
     ctx.restore();
+  } else {
+    ctx.fillStyle = "rgba(80, 130, 90, 0.45)";
+    ctx.font = "10px monospace";
+    ctx.fillText("[E] PATCH", focusBarX, focusBarY + 18);
   }
 
   // ── Right column ─────────────────────────────────────────────────────────
@@ -892,10 +919,14 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
                         "rgb(80,130,255)";
   ctx.fillRect(barX, barY, barW * speedRatio, barH);
 
-  ctx.fillStyle = "rgba(140, 150, 190, 0.65)";
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+  ctx.shadowBlur = 2;
+  ctx.fillStyle = "rgba(180, 190, 225, 0.97)";
   ctx.font = "10px monospace";
   ctx.fillText("SPEED", barX, barY - 5);
   ctx.fillText(`${Math.round(speed)} / ${P.maxSpeed}`, barX + barW - 55, barY - 5);
+  ctx.restore();
 
   // Multiplier badge — cyan during overclock, normal colors otherwise
   const mult = state.multiplier;
@@ -906,7 +937,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     : mult === 4 ? ["rgba(255,40,20,0.22)",  "rgba(255,90,60,1)",   "rgba(255,50,20,0.7)"]
     : mult === 3 ? ["rgba(255,150,0,0.18)",  "rgba(255,190,50,1)",  "rgba(255,140,0,0.5)"]
     : mult === 2 ? ["rgba(50,200,100,0.15)", "rgba(100,230,140,1)", null]
-    :              ["rgba(60,80,120,0.12)",  "rgba(100,120,170,0.7)", null];
+    :              ["rgba(60,80,120,0.25)",  "rgba(165,182,225,0.97)", null];
 
   const badgeX = CV.width - 68;
   const badgeY = 35;
@@ -927,11 +958,15 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.restore();
   }
 
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+  ctx.shadowBlur = 2;
   ctx.fillStyle = multFg;
   ctx.font = "bold 18px monospace";
   ctx.textAlign = "center";
   ctx.fillText(`×${effectiveMult}`, badgeX + badgeW / 2, badgeY + badgeH - 6);
   ctx.textAlign = "left";
+  ctx.restore();
 
   // Overclock bar — replaces / supplements combo when active
   if (state.overclockActive) {
@@ -951,17 +986,25 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
       : "rgba(0, 220, 255, 0.9)";
     ctx.fillRect(ocBarX, ocBarY, ocBarW * ratio, ocBarH);
 
-    ctx.fillStyle = nearEnd ? "rgba(255, 140, 80, 0.85)" : "rgba(0, 210, 255, 0.7)";
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+    ctx.shadowBlur = 2;
+    ctx.fillStyle = nearEnd ? "rgba(255, 150, 90, 0.97)" : "rgba(0, 220, 255, 0.95)";
     ctx.font = "9px monospace";
     ctx.textAlign = "center";
     ctx.fillText(`OVERCLOCK  ${state.overclockTimer.toFixed(1)}s`, badgeX + badgeW / 2, ocBarY + ocBarH + 10);
     ctx.textAlign = "left";
+    ctx.restore();
   } else if (state.combo > 0) {
-    ctx.fillStyle = "rgba(200, 220, 255, 0.75)";
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+    ctx.shadowBlur = 2;
+    ctx.fillStyle = "rgba(210, 228, 255, 0.95)";
     ctx.font = "10px monospace";
     ctx.textAlign = "center";
     ctx.fillText(`${state.combo} COMBO`, badgeX + badgeW / 2, badgeY + badgeH + 14);
     ctx.textAlign = "left";
+    ctx.restore();
   }
 }
 
@@ -1302,24 +1345,32 @@ function updateAndDrawParticles(ctx: CanvasRenderingContext2D, dt: number): void
 // ─── Game Over overlay ───────────────────────────────────────────────────────
 
 function drawGameOverOverlay(ctx: CanvasRenderingContext2D, state: GameState): void {
+  const isNewBest = state.score > 0 && Math.round(state.score) === state.progress.bestScore;
+
   ctx.fillStyle = "rgba(0, 0, 8, 0.68)";
   ctx.fillRect(0, 0, CV.width, CV.height);
 
   const cx = CV.width / 2;
   const cy = CV.height / 2;
   const panelW = 320;
-  const panelH = 148;
+  const panelH = isNewBest ? 190 : 148;
   const panelX = cx - panelW / 2;
   const panelY = cy - panelH / 2;
 
-  // Centered dark panel
-  ctx.fillStyle = "rgba(8, 12, 28, 0.88)";
+  ctx.save();
+  if (isNewBest) {
+    ctx.shadowColor = "rgba(240, 192, 64, 0.55)";
+    ctx.shadowBlur = 18;
+  }
+  ctx.fillStyle = "rgba(8, 12, 28, 0.92)";
   ctx.beginPath();
   ctx.roundRect(panelX, panelY, panelW, panelH, 8);
   ctx.fill();
-  ctx.strokeStyle = "rgba(136, 152, 204, 0.22)";
-  ctx.lineWidth = 1;
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = isNewBest ? "rgba(240, 192, 64, 0.55)" : "rgba(136, 152, 204, 0.22)";
+  ctx.lineWidth = isNewBest ? 1.5 : 1;
   ctx.stroke();
+  ctx.restore();
 
   ctx.textAlign = "center";
 
@@ -1327,17 +1378,35 @@ function drawGameOverOverlay(ctx: CanvasRenderingContext2D, state: GameState): v
   ctx.font = "bold 36px monospace";
   ctx.fillText("GAME OVER", cx, panelY + 44);
 
-  ctx.fillStyle = "#e8eeff";
-  ctx.font = "bold 26px monospace";
-  ctx.fillText(fmtScore(state.score), cx, panelY + 82);
+  if (isNewBest) {
+    ctx.fillStyle = "#f0c040";
+    ctx.font = "bold 13px monospace";
+    ctx.fillText("★  NEW HIGH SCORE  ★", cx, panelY + 68);
 
-  ctx.fillStyle = "rgba(136, 152, 204, 0.80)";
-  ctx.font = "12px monospace";
-  ctx.fillText(`${Math.round(state.player.distanceTraveled)} m`, cx, panelY + 104);
+    ctx.fillStyle = "#f0c040";
+    ctx.font = "bold 28px monospace";
+    ctx.fillText(fmtScore(state.score), cx, panelY + 104);
 
-  ctx.fillStyle = "#40c8b0";
-  ctx.font = "12px monospace";
-  ctx.fillText("R  —  try again", cx, panelY + 130);
+    ctx.fillStyle = "rgba(136, 152, 204, 0.80)";
+    ctx.font = "12px monospace";
+    ctx.fillText(`${Math.round(state.player.distanceTraveled)} m`, cx, panelY + 128);
+
+    ctx.fillStyle = "#40c8b0";
+    ctx.font = "12px monospace";
+    ctx.fillText("R  —  try again", cx, panelY + 168);
+  } else {
+    ctx.fillStyle = "#e8eeff";
+    ctx.font = "bold 26px monospace";
+    ctx.fillText(fmtScore(state.score), cx, panelY + 82);
+
+    ctx.fillStyle = "rgba(136, 152, 204, 0.80)";
+    ctx.font = "12px monospace";
+    ctx.fillText(`${Math.round(state.player.distanceTraveled)} m`, cx, panelY + 104);
+
+    ctx.fillStyle = "#40c8b0";
+    ctx.font = "12px monospace";
+    ctx.fillText("R  —  try again", cx, panelY + 130);
+  }
 
   ctx.textAlign = "left";
 }

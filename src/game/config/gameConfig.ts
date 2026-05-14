@@ -63,8 +63,8 @@ export const GAME_CONFIG = {
     tokenRadius: 14,
     tokenSpacing: 4800,      // deterministic px between patch token spawns
     graceDistance: 3000,     // no patch tokens before this worldOffset
-    shockwaveBaseRadius: 100,   // px at zero speed
-    shockwaveRadiusBonus: 120,  // extra px added at max speed
+    shockwaveBaseRadius: 300,   // px at zero speed
+    shockwaveRadiusBonus: 280,  // extra px added at max speed
     shockwaveDuration: 0.45,    // seconds for the ring animation
   },
 

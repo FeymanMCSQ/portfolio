@@ -21,6 +21,7 @@ export function createGameLoop(
   let lastTimestamp: number | null = null;
   let state = createInitialGameState();
   let restartHeld = false;
+  let patchHeld = false;
   updateTerrain(state);
 
   function tick(timestamp: number): void {
@@ -31,6 +32,8 @@ export function createGameLoop(
     const input = getInput();
     const restartPressed = input.restart && !restartHeld;
     restartHeld = input.restart;
+    const patchPressed = input.usePatch && !patchHeld;
+    patchHeld = input.usePatch;
 
     if (state.phase === "playing") {
       // Focus and overclock timers run in real time, not slowed
@@ -46,7 +49,7 @@ export function createGameLoop(
       updateTerrain(state);
 
       updateTokens(state, physDt);
-      updatePatchPulse(state, physDt);
+      updatePatchPulse(state, patchPressed, physDt);
       updateScore(state, physDt);
       checkNearMisses(state);
 

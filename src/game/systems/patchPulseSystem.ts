@@ -6,12 +6,13 @@ const PP = GAME_CONFIG.patchPulse;
 const P = GAME_CONFIG.player;
 const CV = GAME_CONFIG.canvas;
 const TOKEN_SURFACE_OFFSET = 50;
+const MAX_PATCH_COUNT = 3;
 
-export function updatePatchPulse(state: GameState, dt: number): void {
+export function updatePatchPulse(state: GameState, patchPressed: boolean, dt: number): void {
   cullTokens(state);
   collectToken(state);
   spawnToken(state);
-  fireShockwave(state);
+  if (patchPressed) fireShockwave(state);
   tickShockwaves(state, dt);
 }
 
@@ -22,14 +23,14 @@ function cullTokens(state: GameState): void {
 }
 
 function collectToken(state: GameState): void {
-  if (state.patchArmed) return;
+  if (state.patchCount >= MAX_PATCH_COUNT) return;
   for (let i = state.patchTokens.length - 1; i >= 0; i--) {
     const token = state.patchTokens[i];
     const screenX = token.worldX - state.worldOffset;
     const dx = Math.abs(screenX - state.player.x);
     const dy = Math.abs(token.y - state.player.y);
     if (dx < P.width / 2 + PP.tokenRadius && dy < P.height / 2 + PP.tokenRadius) {
-      state.patchArmed = true;
+      state.patchCount += 1;
       state.patchTokens.splice(i, 1);
       return;
     }
@@ -37,7 +38,7 @@ function collectToken(state: GameState): void {
 }
 
 function spawnToken(state: GameState): void {
-  if (state.patchTokens.length > 0 || state.patchArmed) return;
+  if (state.patchTokens.length > 0 || state.patchCount >= MAX_PATCH_COUNT) return;
   if (state.worldOffset < state.nextPatchTokenAt) return;
 
   const spawn = findTokenSpawn(state);
@@ -47,15 +48,14 @@ function spawnToken(state: GameState): void {
       worldX: spawn.worldX,
       y: spawn.y,
     });
-    state.nextPatchTokenAt =
-      state.nextPatchTokenAt + PP.tokenSpacing;
+    state.nextPatchTokenAt = state.nextPatchTokenAt + PP.tokenSpacing;
   } else {
     state.nextPatchTokenAt += 450;
   }
 }
 
 function fireShockwave(state: GameState): void {
-  if (!state.patchArmed || !state.player.justLanded) return;
+  if (state.patchCount <= 0) return;
 
   const speedRatio = state.player.speed / P.maxSpeed;
   const radius = PP.shockwaveBaseRadius + speedRatio * PP.shockwaveRadiusBonus;
@@ -70,13 +70,13 @@ function fireShockwave(state: GameState): void {
   state.shockwaves.push({
     id: state.nextShockwaveId++,
     worldX: playerWorldX,
-    y: state.player.surfaceY,
+    y: state.player.y,
     maxRadius: radius,
     timer: 0,
     duration: PP.shockwaveDuration,
   });
 
-  state.patchArmed = false;
+  state.patchCount -= 1;
 }
 
 function tickShockwaves(state: GameState, dt: number): void {

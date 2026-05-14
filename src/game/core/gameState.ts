@@ -29,7 +29,7 @@ export function createInitialGameState(): GameState {
     focusMeter: 0,
     focusActive: false,
     focusHeld: false,
-    patchArmed: false,
+    patchCount: 0,
     patchTokens: [],
     nextPatchTokenAt: GAME_CONFIG.patchPulse.graceDistance,
     nextPatchTokenId: 0,

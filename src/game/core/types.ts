@@ -108,7 +108,7 @@ export interface GameState {
   focusHeld: boolean;        // focus key held last frame — for rising-edge detection
 
   // Patch Pulse
-  patchArmed: boolean;
+  patchCount: number;       // inventory: 0–3 collected charges
   patchTokens: PatchPulseToken[];
   nextPatchTokenAt: number;
   nextPatchTokenId: number;
