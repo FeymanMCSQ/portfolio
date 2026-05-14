@@ -82,10 +82,15 @@ export function renderFrame(
   // Anchors to surfaceY (terrain contact point) not player.y, so jump arcs and
   // landing impacts don't move the camera. A 500px lookahead sample shifts the
   // camera down before the player reaches a downhill section.
-  const playerWorldX = state.worldOffset + state.player.x;
-  const sAhead       = sampleTerrainAt(state.terrainSegments, playerWorldX + 500);
-  const aheadY       = sAhead.hasSurface ? sAhead.y : state.player.surfaceY;
-  const lowestY      = Math.max(state.player.surfaceY, aheadY);
+  // Lookahead only active while grounded — airborne, worldOffset still advances so
+  // the 500px sample drifts across varying terrain heights every frame, which is the
+  // source of mid-air camera wobble. surfaceY alone is stable during flight.
+  let lowestY = state.player.surfaceY;
+  if (state.player.isGrounded) {
+    const playerWorldX = state.worldOffset + state.player.x;
+    const sAhead       = sampleTerrainAt(state.terrainSegments, playerWorldX + 500);
+    if (sAhead.hasSurface) lowestY = Math.max(lowestY, sAhead.y);
+  }
 
   // On flat terrain (lowestY == CAMERA_GROUND_Y) → rawTarget == 0 → no camera movement.
   // When terrain drops below ground Y, rawTarget goes negative → camera shifts world up.
