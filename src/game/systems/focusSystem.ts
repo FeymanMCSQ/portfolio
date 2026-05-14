@@ -11,8 +11,10 @@ export function updateFocus(state: GameState, input: InputState, dt: number): vo
 
   if (state.focusActive) {
     state.focusMeter = Math.max(0, state.focusMeter - FC.drainRate * dt);
-    if (state.focusMeter <= 0 || !input.focus) {
+    if (state.focusMeter <= 0) {
       state.focusActive = false;
+    } else if (focusPressed) {
+      state.focusActive = false; // toggle off
     }
   } else {
     if (focusPressed && state.focusMeter >= FC.activationThreshold) {

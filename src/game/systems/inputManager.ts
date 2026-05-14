@@ -6,6 +6,7 @@ export interface InputState {
   restart: boolean;
   focus: boolean;
   usePatch: boolean;
+  pump: boolean;
 }
 
 export function createInputManager(): {
@@ -23,6 +24,7 @@ export function createInputManager(): {
     restart: false,
     focus: false,
     usePatch: false,
+    pump: false,
   };
   let touchJumpQueued = false;
   let touchRestartQueued = false;
@@ -62,6 +64,11 @@ export function createInputManager(): {
       case "E":
         state.usePatch = true;
         break;
+      case "ArrowDown":
+      case "s":
+      case "S":
+        state.pump = true;
+        break;
     }
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Shift"].includes(e.key)) {
       e.preventDefault();
@@ -98,6 +105,11 @@ export function createInputManager(): {
       case "e":
       case "E":
         state.usePatch = false;
+        break;
+      case "ArrowDown":
+      case "s":
+      case "S":
+        state.pump = false;
         break;
     }
   };

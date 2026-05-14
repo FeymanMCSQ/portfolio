@@ -16,6 +16,7 @@ export interface PlayerState {
   landingTimer: number;
   jumpHeld: boolean;
   overclockSpeedMult: number; // 1.0 normally, 2.0 during overclock
+  pumpSpeedMult: number;      // 1.0 normally, >1 during pump boost
   justLanded: boolean;        // true for exactly one frame on touchdown
 }
 
@@ -106,6 +107,15 @@ export interface GameState {
   focusMeter: number;        // 0.0 – 1.0
   focusActive: boolean;
   focusHeld: boolean;        // focus key held last frame — for rising-edge detection
+
+  // Pump
+  pumpCooldown: number;
+  pumpBoostTimer: number;
+  pumpLandingWindow: number;
+  pumpResultTimer: number;
+  pumpCrouchTimer: number;  // brief squash animation countdown
+  pumpResult: "none" | "good" | "perfect";
+  pumpJustFired: boolean;   // one-frame signal for renderer particles
 
   // Patch Pulse
   patchCount: number;       // inventory: 0–3 collected charges

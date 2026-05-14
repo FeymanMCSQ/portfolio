@@ -5,6 +5,7 @@ import { updateScore, checkNearMisses } from "../systems/scoringSystem";
 import { updateTokens, updateOverclock } from "../systems/tokenManager";
 import { updateFocus } from "../systems/focusSystem";
 import { updatePatchPulse } from "../systems/patchPulseSystem";
+import { updatePump } from "../systems/pumpSystem";
 import { recordRunProgress } from "../systems/progressStorage";
 import { renderFrame } from "../rendering/renderer";
 import { createInitialGameState } from "./gameState";
@@ -21,7 +22,8 @@ export function createGameLoop(
   let lastTimestamp: number | null = null;
   let state = createInitialGameState();
   let restartHeld = false;
-  let patchHeld = false;
+  let patchHeld   = false;
+  let pumpHeld    = false;
   updateTerrain(state);
 
   function tick(timestamp: number): void {
@@ -34,6 +36,8 @@ export function createGameLoop(
     restartHeld = input.restart;
     const patchPressed = input.usePatch && !patchHeld;
     patchHeld = input.usePatch;
+    const pumpPressed = input.pump && !pumpHeld;
+    pumpHeld = input.pump;
 
     if (state.phase === "playing") {
       // Focus and overclock timers run in real time, not slowed
@@ -50,6 +54,7 @@ export function createGameLoop(
 
       updateTokens(state, physDt);
       updatePatchPulse(state, patchPressed, physDt);
+      updatePump(state, pumpPressed, physDt);
       updateScore(state, physDt);
       checkNearMisses(state);
 

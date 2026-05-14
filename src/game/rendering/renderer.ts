@@ -2,7 +2,7 @@ import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState, Shockwave, TerrainSegment } from "../core/types";
 import { sampleTerrainAt } from "../systems/terrainSystem";
 
-const { canvas: CV, player: P, world: W, jump: J, overclock: OC, focus: FC, patchPulse: PP } = GAME_CONFIG;
+const { canvas: CV, player: P, world: W, jump: J, overclock: OC, focus: FC, patchPulse: PP, pump: PU } = GAME_CONFIG;
 const VIEW_TOP = 64;
 const VIEW_BOTTOM = CV.height - 34;
 
@@ -123,7 +123,7 @@ interface Particle {
   life: number;   // 1 → 0
   decay: number;  // per second
   r: number;
-  kind: "landing" | "dust";
+  kind: "landing" | "dust" | "pump";
 }
 
 const _particles: Particle[] = [];
@@ -148,6 +148,7 @@ export function renderFrame(
   _prevPhase = state.phase;
 
   if (state.player.justLanded) spawnLandingParticles(state.player.x, state.player.surfaceY);
+  if (state.pumpJustFired) spawnPumpParticles(state.player.x, state.player.surfaceY, state.pumpResult === "perfect");
 
   if (state.player.isGrounded && state.player.speed / P.maxSpeed > 0.62) {
     _dustTimer -= dt;
@@ -224,6 +225,7 @@ export function renderFrame(
 
   drawHUD(ctx, state);
   drawNearMissPopup(ctx, state);
+  drawPumpPopup(ctx, state);
   drawControlsHint(ctx, state);
   drawOverclockFlash(ctx, state);
   if (state.phase === "gameOver") drawGameOverOverlay(ctx, state);
@@ -693,6 +695,13 @@ function drawPlayer(
     squashX = 1.35 - 0.35 * eased;
   }
 
+  // Pump crouch — brief compression on pump press
+  if (state.pumpCrouchTimer > 0 && isGrounded) {
+    const pt = state.pumpCrouchTimer / PU.crouchDuration; // 1→0
+    squashY = Math.min(squashY, 1 - pt * 0.22);
+    squashX = Math.max(squashX, 1 + pt * 0.18);
+  }
+
   const leanAngle = isGrounded ? groundAngle : 0;
   const stretchX  = 1 + speedRatio * 0.14;
 
@@ -1062,6 +1071,33 @@ function drawNearMissPopup(ctx: CanvasRenderingContext2D, state: GameState): voi
   ctx.restore();
 }
 
+// ─── Pump popup ──────────────────────────────────────────────────────────────
+
+function drawPumpPopup(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (state.pumpResultTimer <= 0 || state.pumpResult === "none") return;
+
+  const t     = state.pumpResultTimer / PU.resultDisplayDuration;
+  const alpha = t > 0.3 ? 0.95 : (t / 0.3) * 0.95;
+  const popY  = 134 - (1 - t) * 16;
+
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.shadowColor = "rgba(0, 0, 0, 0.9)";
+  ctx.shadowBlur  = 3;
+
+  if (state.pumpResult === "perfect") {
+    ctx.fillStyle = `rgba(64, 232, 200, ${alpha})`;
+    ctx.font = "bold 18px monospace";
+    ctx.fillText("PERFECT PUMP", CV.width / 2, popY);
+  } else {
+    ctx.fillStyle = `rgba(100, 200, 255, ${alpha})`;
+    ctx.font = "bold 15px monospace";
+    ctx.fillText("GOOD PUMP", CV.width / 2, popY);
+  }
+
+  ctx.restore();
+}
+
 // ─── Controls hint ───────────────────────────────────────────────────────────
 
 function drawControlsHint(
@@ -1075,7 +1111,7 @@ function drawControlsHint(
   ctx.font = "12px monospace";
   ctx.textAlign = "center";
   ctx.fillText(
-    "↑/W accelerate    SPACE jump    SHIFT focus",
+    "↑/W accelerate    SPACE jump    SHIFT focus    S pump",
     CV.width / 2,
     CV.height - 22
   );
@@ -1339,6 +1375,24 @@ function spawnLandingParticles(x: number, y: number): void {
   }
 }
 
+function spawnPumpParticles(x: number, y: number, isPerfect: boolean): void {
+  const count = isPerfect ? 10 : 6;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.PI + (Math.random() - 0.5) * Math.PI * 0.6;
+    const spd   = (isPerfect ? 55 : 30) + Math.random() * 80;
+    _particles.push({
+      x: x - 8 + (Math.random() - 0.5) * 16,
+      y,
+      vx: Math.cos(angle) * spd,
+      vy: Math.sin(angle) * spd - 18,
+      life: 1,
+      decay: 2.8 + Math.random() * 1.6,
+      r: 1.5 + Math.random() * (isPerfect ? 2.5 : 1.5),
+      kind: "pump",
+    });
+  }
+}
+
 function spawnDustParticle(x: number, y: number): void {
   _particles.push({
     x: x - 18 + (Math.random() - 0.5) * 10,
@@ -1360,10 +1414,10 @@ function updateAndDrawParticles(ctx: CanvasRenderingContext2D, dt: number): void
     p.y += p.vy * dt;
     p.vy += 180 * dt; // gravity pull-down
 
-    const alpha = p.life * (p.kind === "landing" ? 0.72 : 0.45);
-    ctx.fillStyle = p.kind === "landing"
-      ? `rgba(${_pal.accentRgb},${alpha})`
-      : `rgba(${_pal.bgTintRgb},${alpha})`;
+    const alpha = p.life * (p.kind === "dust" ? 0.45 : 0.72);
+    ctx.fillStyle = p.kind === "dust"
+      ? `rgba(${_pal.bgTintRgb},${alpha})`
+      : `rgba(${_pal.accentRgb},${alpha})`;
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI * 2);
     ctx.fill();
