@@ -944,7 +944,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
   // ── Backing panels ───────────────────────────────────────────────────────
   ctx.fillStyle = "rgba(6, 8, 22, 0.58)";
   ctx.beginPath();
-  ctx.roundRect(8, 6, 142, 102, 4);
+  ctx.roundRect(8, 6, 142, 124, 4);
   ctx.fill();
 
   ctx.fillStyle = "rgba(6, 8, 22, 0.58)";
@@ -1043,6 +1043,12 @@ function drawHUD(ctx: CanvasRenderingContext2D, state: GameState): void {
     ctx.font = "10px monospace";
     ctx.fillText("[E] PATCH", focusBarX, focusBarY + 18);
   }
+
+  ctx.fillStyle = state.audioMuted
+    ? "rgba(255, 120, 100, 0.82)"
+    : "rgba(160, 210, 255, 0.72)";
+  ctx.font = "10px monospace";
+  ctx.fillText(state.audioMuted ? "[M] SOUND OFF" : "[M] SOUND ON", focusBarX, focusBarY + 34);
 
   // ── Right column ─────────────────────────────────────────────────────────
 

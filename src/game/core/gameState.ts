@@ -23,6 +23,7 @@ export function createInitialGameState(): GameState {
     overclockActive: false,
     overclockTimer: 0,
     overclockFlash: 0,
+    overclockAudioArmed: false,
     tokens: [],
     nextTokenAt: GAME_CONFIG.overclock.graceDistance,
     nextTokenId: 0,
@@ -48,5 +49,7 @@ export function createInitialGameState(): GameState {
     routeFeedbackText: "",
     routeFeedbackTimer: 0,
     lastRiskSegmentId: null,
+    audioEvents: [],
+    audioMuted: false,
   };
 }

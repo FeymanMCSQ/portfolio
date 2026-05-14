@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState } from "../core/types";
+import { queueAudioEvent } from "../audio/audioEvents";
 import { sampleTerrainAt } from "./terrainSystem";
 
 const CV = GAME_CONFIG.canvas;
@@ -59,11 +60,19 @@ export function updateOverclock(state: GameState, dt: number): void {
     state.overclockActive = false;
     state.overclockTimer = 0;
     state.player.overclockSpeedMult = 1;
+    if (state.overclockAudioArmed) {
+      queueAudioEvent(state, "overclock_end");
+    }
+    state.overclockAudioArmed = false;
     // Speed above normal maxSpeed will decay naturally via friction
   }
 }
 
-export function activateOverclock(state: GameState, duration = OC.duration): void {
+export function activateOverclock(
+  state: GameState,
+  duration = OC.duration,
+  options: { playSound?: boolean } = {}
+): void {
   state.overclockActive = true;
   state.overclockTimer = Math.max(state.overclockTimer, duration);
   state.overclockFlash = Math.max(state.overclockFlash, OC.flashDuration);
@@ -72,6 +81,10 @@ export function activateOverclock(state: GameState, duration = OC.duration): voi
     state.player.speed * 1.35,
     P.maxSpeed * OC.speedMultiplier
   );
+  if (options.playSound !== false) {
+    state.overclockAudioArmed = true;
+    queueAudioEvent(state, "overclock_start");
+  }
 }
 
 function findTokenSpawn(state: GameState): { worldX: number; y: number } | null {

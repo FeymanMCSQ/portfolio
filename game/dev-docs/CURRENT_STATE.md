@@ -1,10 +1,10 @@
 # Current State
 
-**Last updated:** 2026-05-14
+**Last updated:** 2026-05-15
 
 ## Active quest
 
-None. Quest 3C Phase 3 (risk/reward route balancing) just completed.
+None. Quest 12 (sound effects) just completed.
 
 ## What exists and works
 
@@ -70,6 +70,16 @@ None. Quest 3C Phase 3 (risk/reward route balancing) just completed.
 - Stored progress: last death distance, farthest distance, best score, and the distance reached during the best-score run
 - HUD shows current score, current distance, best score, and best distance
 - World markers show the last death point and the best-score run death point when those positions scroll into view
+
+### Sound effects (Quest 12 — done)
+- `public/sfx/` contains the browser-served MP3 files copied from the root `sfx/` folder
+- `audioManager.ts` owns registration, preloading, one-shots, loops, fades, mute persistence, and missing-file failure handling
+- `audioSystem.ts` drains queued gameplay audio events and manages the acceleration loop/deceleration cooldown
+- Audio unlocks after the first keyboard, pointer, or touch interaction
+- `M` toggles mute/unmute; mute persists in `localStorage` under `runtimeRush.audio.muted.v1`
+- HUD shows `[M] SOUND ON/OFF`
+- Acceleration loops/fades while accelerating; deceleration is cooldown-limited
+- Jump, landing/hard landing, pump/perfect pump, Overclock, Score Surge, Patch Pulse, ring pass, scenery shift, fall, crash, game over, and high-score sounds are wired
 
 ## Architecture snapshot
 
@@ -180,14 +190,16 @@ None. Quest 3C Phase 3 (risk/reward route balancing) just completed.
   routeFeedbackText: string
   routeFeedbackTimer: number
   lastRiskSegmentId: number | null
+  audioEvents: AudioEventName[]
+  audioMuted: boolean
 }
 ```
 
 ## Config sections in gameConfig.ts
 
-`player`, `terrain`, `routes`, `jump`, `world`, `patchPulse`, `focus`, `pump`, `overclock`, `scoreSurge`, `rewards`, `scoring` — all mutable (no `as const`)
+`player`, `terrain`, `routes`, `jump`, `world`, `patchPulse`, `focus`, `pump`, `overclock`, `scoreSurge`, `rewards`, `audio`, `scoring` — all mutable (no `as const`)
 
 ## Pending / not yet built
 
-- Sound / music
+- Music
 - Portfolio pages around the game

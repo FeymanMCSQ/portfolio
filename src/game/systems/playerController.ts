@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState, PlayerState, TerrainSegment } from "../core/types";
+import { queueAudioEvent } from "../audio/audioEvents";
 import type { InputState } from "./inputManager";
 import {
   crossedRampEnd,
@@ -11,6 +12,7 @@ import {
 const P = GAME_CONFIG.player;
 const J = GAME_CONFIG.jump;
 const T = GAME_CONFIG.terrain;
+const AU = GAME_CONFIG.audio;
 
 export function createPlayerState(): PlayerState {
   return {
@@ -33,6 +35,7 @@ export function createPlayerState(): PlayerState {
     dropThroughSegmentId: null,
     dropThroughRoute: null,
     dropThroughTimer: 0,
+    fallAudioPlayed: false,
   };
 }
 
@@ -115,6 +118,8 @@ function updateVerticalMovement(
       const speedRatio = player.speed / P.maxSpeed;
       player.verticalVelocity = -(J.baseVelocity + J.speedBonus * speedRatio);
       player.isGrounded = false;
+      player.fallAudioPlayed = false;
+      queueAudioEvent(state, "jump");
       // landingTimer left at its current value; squash only triggers on landing
       return;
     }
@@ -139,6 +144,7 @@ function updateVerticalMovement(
     if (!surface.hasSurface) {
       player.isGrounded = false;
       player.verticalVelocity = Math.max(0, player.verticalVelocity);
+      playFallOnce(state, player);
       return;
     }
 
@@ -155,6 +161,14 @@ function updateVerticalMovement(
     player.y += player.verticalVelocity * dt;
 
     const footY = player.y + P.height / 2;
+    if (
+      !player.fallAudioPlayed &&
+      player.verticalVelocity > 0 &&
+      footY > player.surfaceY + 28
+    ) {
+      playFallOnce(state, player);
+    }
+
     const landing = findLandingSurface(
       state.terrainSegments,
       previousWorldX,
@@ -169,6 +183,7 @@ function updateVerticalMovement(
     );
 
     if (landing) {
+      const landingVelocity = player.verticalVelocity;
       player.y = landing.y - P.height / 2;
       player.surfaceY = landing.y;
       player.groundAngle = landing.angle;
@@ -177,8 +192,19 @@ function updateVerticalMovement(
       player.isGrounded = true;
       player.landingTimer = 0;
       player.justLanded = true;
+      player.fallAudioPlayed = false;
+      queueAudioEvent(
+        state,
+        landingVelocity >= AU.hardLandingVelocity ? "hard_landing" : "landing"
+      );
     }
   }
+}
+
+function playFallOnce(state: GameState, player: PlayerState): void {
+  if (player.fallAudioPlayed) return;
+  player.fallAudioPlayed = true;
+  queueAudioEvent(state, "fall");
 }
 
 function updateDropThroughTimer(player: PlayerState, dt: number): void {

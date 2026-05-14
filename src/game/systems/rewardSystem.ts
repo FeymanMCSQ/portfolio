@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState } from "../core/types";
+import { queueAudioEvent } from "../audio/audioEvents";
 import { getScoreGainFactor } from "./scoringSystem";
 
 const P = GAME_CONFIG.player;
@@ -74,6 +75,7 @@ function collectEnergyRings(state: GameState): void {
     state.energyRings.splice(i, 1);
     awardRewardScore(state, ring.bonus);
     setRouteFeedback(state, `RING BONUS +${ring.bonus}`);
+    queueAudioEvent(state, "ring_pass");
   }
 }
 
@@ -101,6 +103,7 @@ function updateRiskRouteScore(state: GameState, dt: number): void {
       segment.riskLabel ??
       (riskLevel >= 3 ? "EXTREME LINE" : riskLevel === 2 ? "RISK LINE" : "HIGH LINE");
     setRouteFeedback(state, `${label} +${Math.round(RW.riskScorePerSecond * riskLevel)}/s`);
+    queueAudioEvent(state, "collectible");
   }
 }
 
@@ -125,6 +128,7 @@ function activateScoreSurge(state: GameState): void {
   state.scoreSurgeTimer = Math.max(state.scoreSurgeTimer, SS.scoreSurgeDuration);
   state.scoreSurgeFlash = Math.max(state.scoreSurgeFlash, SS.flashDuration);
   setRouteFeedback(state, `SCORE SURGE x${SS.scoreSurgeMultiplier}`);
+  queueAudioEvent(state, "score_surge");
 }
 
 function setRouteFeedback(state: GameState, text: string): void {

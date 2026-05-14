@@ -18,6 +18,7 @@
 | 3C-1 | Risk/Reward Route Foundation | ✅ done | Added route pattern library, upper/lower overlapping route surfaces, red drop ramps, and S/down drop-through behavior |
 | 3C-2 | Route Rewards | ✅ done | Added red Score Surge, route reward scoring, Energy Ring bonuses, and HUD feedback |
 | 3C-3 | Risk/Reward Balance | ✅ done | Removed yellow orbs; made upper/lower routes multi-step, riskier, and score through survival on risky lines |
+| 12 | Sound Effects | ✅ done | Added central AudioManager, event-driven SFX, acceleration loop, mute toggle, and public `/sfx` assets |
 
 ## Next quest candidates (not decided)
 

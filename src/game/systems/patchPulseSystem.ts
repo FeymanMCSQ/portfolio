@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState } from "../core/types";
+import { queueAudioEvent } from "../audio/audioEvents";
 import { getTerrainObstacleFrames, sampleTerrainAt } from "./terrainSystem";
 
 const PP = GAME_CONFIG.patchPulse;
@@ -32,6 +33,7 @@ function collectToken(state: GameState): void {
     if (dx < P.width / 2 + PP.tokenRadius && dy < P.height / 2 + PP.tokenRadius) {
       state.patchCount += 1;
       state.patchTokens.splice(i, 1);
+      queueAudioEvent(state, "blast_collect");
       return;
     }
   }
@@ -61,9 +63,11 @@ function fireShockwave(state: GameState): void {
   const radius = PP.shockwaveBaseRadius + speedRatio * PP.shockwaveRadiusBonus;
 
   const playerWorldX = state.worldOffset + state.player.x;
+  let clearedCount = 0;
   for (const frame of getTerrainObstacleFrames(state.terrainSegments)) {
     if (Math.abs(frame.worldX - playerWorldX) <= radius) {
       frame.segment.obstacle = undefined;
+      clearedCount += 1;
     }
   }
 
@@ -77,6 +81,10 @@ function fireShockwave(state: GameState): void {
   });
 
   state.patchCount -= 1;
+  queueAudioEvent(state, "blast_use");
+  if (clearedCount > 0) {
+    queueAudioEvent(state, "obstacle_dissolve");
+  }
 }
 
 function tickShockwaves(state: GameState, dt: number): void {

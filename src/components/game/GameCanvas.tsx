@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { createInputManager } from "@/game/systems/inputManager";
 import { createGameLoop } from "@/game/core/gameLoop";
 import { GAME_CONFIG } from "@/game/config/gameConfig";
+import { initializeAudio } from "@/game/audio/audioSystem";
 import AdminPanel from "./AdminPanel";
 
 const { width, height } = GAME_CONFIG.canvas;
@@ -15,6 +16,7 @@ export default function GameCanvas() {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    initializeAudio();
     const input = createInputManager();
     const loop = createGameLoop(canvas, input.getState);
 

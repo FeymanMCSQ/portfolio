@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState } from "../core/types";
+import { queueAudioEvent } from "../audio/audioEvents";
 import { getTerrainObstacleFrames } from "./terrainSystem";
 
 const CV = GAME_CONFIG.canvas;
@@ -42,7 +43,10 @@ function checkTerrainObstacleCollisions(state: GameState): boolean {
       localPlayer.y + halfH > top &&
       localPlayer.y - halfH < bottom;
 
-    if (overlaps) return true;
+    if (overlaps) {
+      queueAudioEvent(state, "crash");
+      return true;
+    }
   }
 
   return false;

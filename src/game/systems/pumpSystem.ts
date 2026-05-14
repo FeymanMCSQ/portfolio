@@ -1,5 +1,6 @@
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { GameState } from "../core/types";
+import { queueAudioEvent } from "../audio/audioEvents";
 import { getTerrainSegmentById, isRedDropRamp } from "./terrainSystem";
 import { activateOverclock } from "./tokenManager";
 
@@ -32,14 +33,18 @@ export function updatePump(state: GameState, pumpPressed: boolean, dt: number): 
     state.player.dropThroughSegmentId = currentSegment.id;
     state.player.dropThroughRoute = currentSegment.route;
     state.player.dropThroughTimer = R.dropThroughDuration;
+    state.player.fallAudioPlayed = true;
     state.pumpCooldown = PU.cooldown;
     state.pumpCrouchTimer = PU.crouchDuration;
+    queueAudioEvent(state, "fall");
     return;
   }
 
   if (state.player.isGrounded) {
-    activateOverclock(state, PU.duration); // same effect as cyan token, just shorter
+    const perfectPump = state.pumpLandingWindow > PU.landingWindow * 0.5;
+    activateOverclock(state, PU.duration, { playSound: false }); // same effect as cyan token, just shorter
     state.pumpCooldown    = PU.cooldown;
     state.pumpCrouchTimer = PU.crouchDuration;
+    queueAudioEvent(state, perfectPump ? "perfect_pump" : "pump");
   }
 }

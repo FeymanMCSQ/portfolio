@@ -1,5 +1,26 @@
 export type GamePhase = "idle" | "playing" | "gameOver";
 
+export type AudioEventName =
+  | "jump"
+  | "landing"
+  | "hard_landing"
+  | "pump"
+  | "perfect_pump"
+  | "deceleration"
+  | "overclock_start"
+  | "overclock_end"
+  | "score_surge"
+  | "blast_collect"
+  | "blast_use"
+  | "obstacle_dissolve"
+  | "collectible"
+  | "ring_pass"
+  | "fall"
+  | "crash"
+  | "game_over"
+  | "scenery_shift"
+  | "high_score";
+
 export interface PlayerState {
   x: number;
   y: number;
@@ -20,6 +41,7 @@ export interface PlayerState {
   dropThroughSegmentId: number | null;
   dropThroughRoute: TerrainRoute | null;
   dropThroughTimer: number;
+  fallAudioPlayed: boolean;
 }
 
 export type TerrainRoute = "main" | "upper" | "lower";
@@ -124,6 +146,7 @@ export interface GameState {
   overclockActive: boolean;
   overclockTimer: number;    // countdown 5 → 0
   overclockFlash: number;    // brief screen flash on collection (0.15 → 0)
+  overclockAudioArmed: boolean;
   tokens: OverclockToken[];
   nextTokenAt: number;
   nextTokenId: number;
@@ -157,4 +180,8 @@ export interface GameState {
   routeFeedbackText: string;
   routeFeedbackTimer: number;
   lastRiskSegmentId: number | null;
+
+  // Audio
+  audioEvents: AudioEventName[];
+  audioMuted: boolean;
 }
