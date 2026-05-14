@@ -10,13 +10,13 @@ const VIEW_BOTTOM = CV.height - 34;
 
 // Skateboard geometry — all values in player-local space, y=0 is hitbox centre
 const BOARD = {
-  deckW:   34,
+  deckW:   46,   // longer deck so wheels sit well inside nose/tail
   deckH:   4,
   deckTop: -7,   // top of deck above centre
-  wheelR:  4,
-  wheelY:  5,    // wheel centre below centre (bottom = hitbox bottom)
-  wheelFX: 12,   // front wheel X (right)
-  wheelBX: -12,  // back wheel X (left)
+  wheelR:  5,
+  wheelY:  5,    // wheel centre below centre
+  wheelFX: 13,   // front wheel — inside the nose
+  wheelBX: -13,  // back wheel — inside the tail
 };
 
 // ─── Deterministic score-interval palette ────────────────────────────────────
@@ -719,12 +719,58 @@ function drawPlayer(
     );
   }
 
-  // ── Trucks ────────────────────────────────────────────────────────────────
-  const truckTop = BOARD.deckTop + BOARD.deckH;
-  const truckH   = BOARD.wheelY - BOARD.wheelR - truckTop;
+  // ── Wheels (drawn first so deck overlaps the wheel tops) ─────────────────
+  const spinAngle = state.worldOffset / BOARD.wheelR;
+  const wheelPositions = [BOARD.wheelFX, BOARD.wheelBX];
+
+  for (const wx of wheelPositions) {
+    const wy = BOARD.wheelY;
+
+    // Tire — dark rubber outer
+    ctx.fillStyle = "#1c1c26";
+    ctx.beginPath();
+    ctx.arc(wx, wy, BOARD.wheelR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tire sidewall ring
+    ctx.strokeStyle = "rgba(120, 130, 160, 0.55)";
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.arc(wx, wy, BOARD.wheelR - 0.5, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Hub — lighter inner disc
+    ctx.fillStyle = _pal.wheelColor;
+    ctx.beginPath();
+    ctx.arc(wx, wy, BOARD.wheelR - 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rotating spokes — 3 at 120° intervals
+    ctx.strokeStyle = "rgba(60, 70, 95, 0.80)";
+    ctx.lineWidth = 0.9;
+    for (let s = 0; s < 3; s++) {
+      const a = spinAngle + s * (Math.PI * 2 / 3);
+      ctx.beginPath();
+      ctx.moveTo(wx, wy);
+      ctx.lineTo(
+        wx + Math.cos(a) * (BOARD.wheelR - 0.8),
+        wy + Math.sin(a) * (BOARD.wheelR - 0.8)
+      );
+      ctx.stroke();
+    }
+
+    // Hub cap
+    ctx.fillStyle = _pal.truckColor;
+    ctx.beginPath();
+    ctx.arc(wx, wy, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ── Trucks — flat horizontal baseplates only, no vertical rods ───────────
+  const baseplateY = BOARD.deckTop + BOARD.deckH;
   ctx.fillStyle = _pal.truckColor;
-  ctx.fillRect(BOARD.wheelFX - 3, truckTop, 6, truckH);
-  ctx.fillRect(BOARD.wheelBX - 3, truckTop, 6, truckH);
+  ctx.fillRect(BOARD.wheelFX - 3, baseplateY, 6, 2);
+  ctx.fillRect(BOARD.wheelBX - 3, baseplateY, 6, 2);
 
   // ── Deck base — near-black with speed glow ────────────────────────────────
   ctx.save();
@@ -746,24 +792,6 @@ function drawPlayer(
   iGrad.addColorStop(1,    `rgba(${_pal.iridescentARgb},0)`);
   ctx.fillStyle = iGrad;
   ctx.fillRect(-BOARD.deckW / 2, BOARD.deckTop, BOARD.deckW, BOARD.deckH);
-
-  // ── Wheels ────────────────────────────────────────────────────────────────
-  ctx.fillStyle = _pal.wheelColor;
-  ctx.beginPath();
-  ctx.arc(BOARD.wheelFX, BOARD.wheelY, BOARD.wheelR, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(BOARD.wheelBX, BOARD.wheelY, BOARD.wheelR, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Wheel highlight
-  ctx.fillStyle = "rgba(255, 255, 255, 0.50)";
-  ctx.beginPath();
-  ctx.arc(BOARD.wheelFX - 1, BOARD.wheelY - 1, 1.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(BOARD.wheelBX - 1, BOARD.wheelY - 1, 1.5, 0, Math.PI * 2);
-  ctx.fill();
 
   ctx.restore();
 }
