@@ -24,7 +24,6 @@ export function createPlayerState(): PlayerState {
     landingTimer: J.landingSquashDuration,
     jumpHeld: false,
     overclockSpeedMult: 1,
-    pumpSpeedMult: 1,
     justLanded: false,
   };
 }
@@ -55,7 +54,7 @@ function updateForwardSpeed(
   dt: number
 ): void {
   if (input.accelerating) {
-    player.speed = Math.min(player.speed + P.acceleration * dt, P.maxSpeed * player.overclockSpeedMult * player.pumpSpeedMult);
+    player.speed = Math.min(player.speed + P.acceleration * dt, P.maxSpeed * player.overclockSpeedMult);
   } else {
     player.speed *= Math.pow(P.friction, dt * 60);
     if (player.speed < 2) player.speed = 0;

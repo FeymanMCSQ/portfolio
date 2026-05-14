@@ -63,12 +63,11 @@ export function updateOverclock(state: GameState, dt: number): void {
   }
 }
 
-function activateOverclock(state: GameState): void {
+export function activateOverclock(state: GameState, duration = OC.duration): void {
   state.overclockActive = true;
-  state.overclockTimer = OC.duration;
-  state.overclockFlash = OC.flashDuration;
+  state.overclockTimer = Math.max(state.overclockTimer, duration);
+  state.overclockFlash = Math.max(state.overclockFlash, OC.flashDuration);
   state.player.overclockSpeedMult = OC.speedMultiplier;
-  // Immediate kick — feel the activation instantly
   state.player.speed = Math.min(
     state.player.speed * 1.35,
     P.maxSpeed * OC.speedMultiplier

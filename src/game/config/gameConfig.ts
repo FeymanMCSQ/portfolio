@@ -77,18 +77,10 @@ export const GAME_CONFIG = {
   },
 
   pump: {
-    cooldown: 0.75,                // seconds before another pump is allowed
-    boostDuration: 0.35,           // how long the speed boost lasts
-    goodBoostMult: 1.18,           // max-speed cap multiplier for a good pump
-    perfectBoostMult: 1.28,        // cap multiplier for a perfect pump
-    goodSpeedKick: 160,            // immediate px/s added on good pump
-    perfectSpeedKick: 220,         // immediate px/s added on perfect pump
-    landingWindow: 0.20,           // seconds after landing that qualify as perfect
-    downhillLookahead: 120,        // px ahead to sample for slope detection
-    downhillSlopeThreshold: 8,     // min px drop over lookahead to count as downhill
-    strongDownhillThreshold: 22,   // px drop that qualifies as perfect
-    resultDisplayDuration: 0.9,    // seconds to show GOOD/PERFECT text
-    crouchDuration: 0.12,          // squash animation duration on pump press
+    cooldown: 0.75,        // seconds before another pump is allowed
+    duration: 1.0,         // mini-overclock duration (same effect as cyan token)
+    landingWindow: 0.20,   // seconds after landing — bar shows during this window
+    crouchDuration: 0.12,  // squash animation duration on pump press
   },
 
   overclock: {

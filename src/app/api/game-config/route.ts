@@ -22,6 +22,7 @@ const WRITABLE_KEYS: Record<string, string[]> = {
   overclock: ["duration", "speedMultiplier", "scoreMultiplier", "tokenSpacing"],
   focus: ["fillRate", "drainRate", "timeScale"],
   patchPulse: ["shockwaveBaseRadius", "shockwaveRadiusBonus", "shockwaveDuration"],
+  pump: ["landingWindow", "cooldown", "duration"],
 };
 
 export async function POST(req: NextRequest) {

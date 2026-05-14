@@ -47,6 +47,11 @@ type PatchPulseKey =
   | "shockwaveRadiusBonus"
   | "shockwaveDuration";
 
+type PumpKey =
+  | "landingWindow"
+  | "cooldown"
+  | "duration";
+
 type SliderKey =
   | PlayerKey
   | TerrainKey
@@ -54,11 +59,12 @@ type SliderKey =
   | ScoringKey
   | OverclockKey
   | FocusKey
-  | PatchPulseKey;
+  | PatchPulseKey
+  | PumpKey;
 
-type ConfigTarget = "player" | "terrain" | "jump" | "scoring" | "overclock" | "focus" | "patchPulse";
+type ConfigTarget = "player" | "terrain" | "jump" | "scoring" | "overclock" | "focus" | "patchPulse" | "pump";
 type AdminMode = "local" | "global";
-type AllValues = Record<SliderKey, number>;
+type AllValues = Record<ConfigTarget, Record<string, number>>;
 
 interface SliderDef {
   key: SliderKey;
@@ -117,6 +123,12 @@ const PATCH_PULSE_DEFAULTS: Record<PatchPulseKey, number> = {
   shockwaveDuration: GAME_CONFIG.patchPulse.shockwaveDuration,
 };
 
+const PUMP_DEFAULTS: Record<PumpKey, number> = {
+  landingWindow: GAME_CONFIG.pump.landingWindow,
+  cooldown:      GAME_CONFIG.pump.cooldown,
+  duration:      GAME_CONFIG.pump.duration,
+};
+
 const SCORING_DEFAULTS: Record<ScoringKey, number> = {
   pointsPerPx: GAME_CONFIG.scoring.pointsPerPx,
   nearMissBonus: GAME_CONFIG.scoring.nearMissBonus,
@@ -127,15 +139,18 @@ const SCORING_DEFAULTS: Record<ScoringKey, number> = {
   tier4: GAME_CONFIG.scoring.tier4,
 };
 
-const ALL_DEFAULTS: AllValues = {
-  ...PLAYER_DEFAULTS,
-  ...TERRAIN_DEFAULTS,
-  ...JUMP_DEFAULTS,
-  ...SCORING_DEFAULTS,
-  ...OVERCLOCK_DEFAULTS,
-  ...FOCUS_DEFAULTS,
-  ...PATCH_PULSE_DEFAULTS,
-};
+function cloneDefaults(): AllValues {
+  return {
+    player:     { ...PLAYER_DEFAULTS },
+    terrain:    { ...TERRAIN_DEFAULTS },
+    jump:       { ...JUMP_DEFAULTS },
+    scoring:    { ...SCORING_DEFAULTS },
+    overclock:  { ...OVERCLOCK_DEFAULTS },
+    focus:      { ...FOCUS_DEFAULTS },
+    patchPulse: { ...PATCH_PULSE_DEFAULTS },
+    pump:       { ...PUMP_DEFAULTS },
+  };
+}
 
 // ─── Section definitions ──────────────────────────────────────────────────────
 
@@ -195,6 +210,15 @@ const SECTIONS: Section[] = [
       { key: "fillRate", target: "focus", label: "Fill Rate", min: 0.04, max: 0.40, step: 0.01, format: (v) => `${v.toFixed(2)}/s` },
       { key: "drainRate", target: "focus", label: "Drain Rate", min: 0.10, max: 0.60, step: 0.01, format: (v) => `${v.toFixed(2)}/s` },
       { key: "timeScale", target: "focus", label: "Time Scale", min: 0.20, max: 0.80, step: 0.05, format: (v) => `${Math.round(v * 100)}%` },
+    ],
+  },
+  {
+    title: "Pump",
+    summary: "Mini-overclock on S press. Same effect as cyan token, shorter duration.",
+    sliders: [
+      { key: "duration",      target: "pump", label: "Boost Duration", min: 0.2, max: 3.0, step: 0.1,  format: (v) => `${v.toFixed(1)} s` },
+      { key: "cooldown",      target: "pump", label: "Cooldown",       min: 0.2, max: 2.0, step: 0.05, format: (v) => `${v.toFixed(2)} s` },
+      { key: "landingWindow", target: "pump", label: "Window Bar",     min: 0.05, max: 0.6, step: 0.01, format: (v) => `${v.toFixed(2)} s` },
     ],
   },
   {
@@ -374,7 +398,7 @@ export default function AdminPanel() {
   const [isLocalhost, setIsLocalhost] = useState(false);
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<AdminMode>("local");
-  const [values, setValues] = useState<AllValues>({ ...ALL_DEFAULTS });
+  const [values, setValues] = useState<AllValues>(cloneDefaults());
   const [dirty, setDirty] = useState(false);
   const [status, setStatus] = useState("Local settings apply to this running session only.");
 
@@ -433,7 +457,7 @@ export default function AdminPanel() {
       if (!Number.isFinite(n)) return;
 
       setValues((prev) => {
-        const next = { ...prev, [slider.key]: n };
+        const next = { ...prev, [slider.target]: { ...prev[slider.target], [slider.key]: n } };
         applyValuesToRuntime(next);
         return next;
       });
@@ -449,7 +473,7 @@ export default function AdminPanel() {
   );
 
   const reset = useCallback(() => {
-    const next = { ...ALL_DEFAULTS };
+    const next = cloneDefaults();
     setValues(next);
     applyValuesToRuntime(next);
 
@@ -547,7 +571,7 @@ export default function AdminPanel() {
                           min={slider.min}
                           max={slider.max}
                           step={slider.step}
-                          value={values[slider.key]}
+                          value={values[slider.target][slider.key]}
                           onChange={(e) => handleChange(slider, e.target.value)}
                           style={{
                             width: "100%",
@@ -555,7 +579,7 @@ export default function AdminPanel() {
                             cursor: "pointer",
                           }}
                         />
-                        <span style={S.value}>{slider.format(values[slider.key])}</span>
+                        <span style={S.value}>{slider.format(values[slider.target][slider.key])}</span>
                       </div>
                     ))}
                   </section>
@@ -578,7 +602,7 @@ function applyValuesToRuntime(values: AllValues): void {
   for (const section of SECTIONS) {
     for (const slider of section.sliders) {
       const target = getRuntimeTarget(slider.target);
-      target[slider.key] = values[slider.key];
+      target[slider.key] = values[slider.target][slider.key];
     }
   }
 }
@@ -599,6 +623,8 @@ function getRuntimeTarget(target: ConfigTarget): Record<string, number> {
       return GAME_CONFIG.patchPulse as Record<string, number>;
     case "focus":
       return GAME_CONFIG.focus as Record<string, number>;
+    case "pump":
+      return GAME_CONFIG.pump as Record<string, number>;
   }
 }
 
@@ -611,11 +637,12 @@ function toConfigPatch(values: AllValues): Record<ConfigTarget, Record<string, n
     overclock: {},
     focus: {},
     patchPulse: {},
+    pump: {},
   };
 
   for (const section of SECTIONS) {
     for (const slider of section.sliders) {
-      patch[slider.target][slider.key] = values[slider.key];
+      patch[slider.target][slider.key] = values[slider.target][slider.key];
     }
   }
 
