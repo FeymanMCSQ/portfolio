@@ -4,7 +4,7 @@
 
 ## Active quest
 
-None. Quest 12 (sound effects) just completed.
+None. Quest 12 (sound effects and gameplay music) just completed.
 
 ## What exists and works
 
@@ -71,14 +71,15 @@ None. Quest 12 (sound effects) just completed.
 - HUD shows current score, current distance, best score, and best distance
 - World markers show the last death point and the best-score run death point when those positions scroll into view
 
-### Sound effects (Quest 12 — done)
+### Sound effects and music (Quest 12 — done)
 - `public/sfx/` contains the browser-served MP3 files copied from the root `sfx/` folder
-- `audioManager.ts` owns registration, preloading, one-shots, loops, fades, mute persistence, and missing-file failure handling
-- `audioSystem.ts` drains queued gameplay audio events and manages the acceleration loop/deceleration cooldown
+- `audioManager.ts` owns registration, preloading, one-shots, loops, music, fades, mute persistence, and missing-file failure handling
+- `audioSystem.ts` drains queued gameplay audio events, manages the acceleration loop/deceleration cooldown, and syncs gameplay music to game phase
 - Audio unlocks after the first keyboard, pointer, or touch interaction
 - `M` toggles mute/unmute; mute persists in `localStorage` under `runtimeRush.audio.muted.v1`
 - HUD shows `[M] SOUND ON/OFF`
 - Acceleration loops/fades while accelerating; deceleration is cooldown-limited
+- `main_gameplay_loop.mp3` fades in during play, fades out on game over, pauses when the page is hidden, and ducks under major SFX
 - Jump, landing/hard landing, pump/perfect pump, Overclock, Score Surge, Patch Pulse, ring pass, scenery shift, fall, crash, game over, and high-score sounds are wired
 
 ## Architecture snapshot
@@ -201,5 +202,4 @@ None. Quest 12 (sound effects) just completed.
 
 ## Pending / not yet built
 
-- Music
 - Portfolio pages around the game

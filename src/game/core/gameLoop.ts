@@ -8,7 +8,7 @@ import { updatePatchPulse } from "../systems/patchPulseSystem";
 import { updatePump } from "../systems/pumpSystem";
 import { updateRewards } from "../systems/rewardSystem";
 import { queueAudioEvent } from "../audio/audioEvents";
-import { updateAudioSystem } from "../audio/audioSystem";
+import { shutdownAudio, updateAudioSystem } from "../audio/audioSystem";
 import { recordRunProgress } from "../systems/progressStorage";
 import { renderFrame } from "../rendering/renderer";
 import { createInitialGameState } from "./gameState";
@@ -104,6 +104,7 @@ export function createGameLoop(
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = null;
       lastTimestamp = null;
+      shutdownAudio();
     },
   };
 }

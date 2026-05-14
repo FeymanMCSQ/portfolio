@@ -122,6 +122,15 @@ export const GAME_CONFIG = {
 
   audio: {
     masterVolume: 1,
+    sfxVolume: 1,
+    musicVolume: 0.16,
+    musicFadeInSeconds: 0.9,
+    musicFadeOutSeconds: 0.55,
+    musicPauseFadeSeconds: 0.18,
+    musicDuckScale: 0.35,
+    musicDuckFadeSeconds: 0.08,
+    musicDuckHoldSeconds: 0.65,
+    musicDuckRestoreSeconds: 0.4,
     accelerationFadeSeconds: 0.16,
     decelerationCooldown: 0.45,
     collectibleCooldown: 0.045,

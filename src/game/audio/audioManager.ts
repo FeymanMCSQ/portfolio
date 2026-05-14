@@ -2,6 +2,7 @@ import { GAME_CONFIG } from "../config/gameConfig";
 import type { AudioEventName } from "../core/types";
 
 type SoundId = AudioEventName | "acceleration";
+export type MusicTrackId = "gameplay";
 
 interface PlayOptions {
   volume?: number;
@@ -15,8 +16,19 @@ interface LoopState {
   fadeId: number | null;
 }
 
+interface MusicState {
+  id: MusicTrackId;
+  audio: HTMLAudioElement;
+  targetVolume: number;
+  fadeId: number | null;
+}
+
 const STORAGE_KEY = "runtimeRush.audio.muted.v1";
 const SFX_BASE = "/sfx";
+
+const MUSIC_FILES: Record<MusicTrackId, string> = {
+  gameplay: "/sfx/main_gameplay_loop.mp3",
+};
 
 const SOUND_FILES: Record<SoundId, string> = {
   acceleration: "acceleration.mp3",
@@ -43,8 +55,13 @@ const SOUND_FILES: Record<SoundId, string> = {
 
 class AudioManager {
   private readonly registry = new Map<SoundId, HTMLAudioElement>();
+  private readonly musicRegistry = new Map<MusicTrackId, HTMLAudioElement>();
   private readonly unavailable = new Set<SoundId>();
+  private readonly unavailableMusic = new Set<MusicTrackId>();
   private readonly loops = new Map<SoundId, LoopState>();
+  private currentMusic: MusicState | null = null;
+  private musicScale = 1;
+  private musicRestoreId: number | null = null;
   private unlocked = false;
   private muted = false;
 
@@ -64,6 +81,9 @@ class AudioManager {
 
   preloadAll(): void {
     for (const audio of this.registry.values()) {
+      audio.load();
+    }
+    for (const audio of this.musicRegistry.values()) {
       audio.load();
     }
   }
@@ -137,6 +157,91 @@ class AudioManager {
     }
   }
 
+  startMusic(
+    id: MusicTrackId,
+    fadeSeconds = GAME_CONFIG.audio.musicFadeInSeconds,
+    restart = false
+  ): void {
+    if (!this.canUseAudio() || this.unavailableMusic.has(id)) return;
+
+    const targetVolume = this.resolveMusicVolume() * this.musicScale;
+    const existing = this.currentMusic;
+
+    if (existing?.id === id) {
+      if (restart) existing.audio.currentTime = 0;
+      this.playMusicState(existing, () => {
+        this.updateMusicTarget(existing, targetVolume, fadeSeconds);
+      });
+      return;
+    }
+
+    if (existing) this.stopMusic(0.08, false);
+
+    const audio = this.musicRegistry.get(id);
+    if (!audio) return;
+
+    audio.loop = true;
+    audio.volume = 0;
+    if (restart) audio.currentTime = 0;
+
+    const music: MusicState = { id, audio, targetVolume: 0, fadeId: null };
+    this.currentMusic = music;
+    this.playMusicState(music, () => {
+      this.updateMusicTarget(music, targetVolume, fadeSeconds);
+    });
+  }
+
+  pauseMusic(fadeSeconds = GAME_CONFIG.audio.musicPauseFadeSeconds): void {
+    const music = this.currentMusic;
+    if (!music) return;
+    if (music.targetVolume <= 0 && !music.audio.paused) return;
+
+    this.updateMusicTarget(music, 0, fadeSeconds, () => {
+      music.audio.pause();
+    });
+  }
+
+  stopMusic(fadeSeconds = GAME_CONFIG.audio.musicFadeOutSeconds, reset = true): void {
+    const music = this.currentMusic;
+    if (!music) return;
+
+    this.clearMusicDuckTimer();
+    this.musicScale = 1;
+
+    if (music.targetVolume <= 0 && !music.audio.paused) return;
+
+    this.updateMusicTarget(music, 0, fadeSeconds, () => {
+      music.audio.pause();
+      if (reset) music.audio.currentTime = 0;
+      if (this.currentMusic === music) this.currentMusic = null;
+    });
+  }
+
+  duckMusic(holdSeconds = GAME_CONFIG.audio.musicDuckHoldSeconds): void {
+    const music = this.currentMusic;
+    if (!music || this.muted) return;
+
+    this.clearMusicDuckTimer();
+    this.musicScale = GAME_CONFIG.audio.musicDuckScale;
+    this.updateMusicTarget(
+      music,
+      this.resolveMusicVolume() * this.musicScale,
+      GAME_CONFIG.audio.musicDuckFadeSeconds
+    );
+
+    if (typeof window === "undefined") return;
+    this.musicRestoreId = window.setTimeout(() => {
+      this.musicRestoreId = null;
+      this.musicScale = 1;
+      if (!this.currentMusic || this.muted) return;
+      this.updateMusicTarget(
+        this.currentMusic,
+        this.resolveMusicVolume(),
+        GAME_CONFIG.audio.musicDuckRestoreSeconds
+      );
+    }, holdSeconds * 1000);
+  }
+
   setMuted(nextMuted: boolean): void {
     this.muted = nextMuted;
     if (typeof window !== "undefined") {
@@ -146,7 +251,10 @@ class AudioManager {
         // Storage may be unavailable in private or restricted contexts.
       }
     }
-    if (nextMuted) this.stopAllLoops();
+    if (nextMuted) {
+      this.stopAllLoops();
+      this.pauseMusic(0.06);
+    }
   }
 
   toggleMuted(): boolean {
@@ -171,21 +279,81 @@ class AudioManager {
       });
       this.registry.set(id, audio);
     }
+
+    for (const [id, path] of Object.entries(MUSIC_FILES) as [MusicTrackId, string][]) {
+      const audio = new Audio(path);
+      audio.preload = "auto";
+      audio.loop = true;
+      audio.addEventListener("error", () => {
+        this.unavailableMusic.add(id);
+      });
+      this.musicRegistry.set(id, audio);
+    }
   }
 
   private canPlay(id: SoundId): boolean {
     return Boolean(
-      typeof window !== "undefined" &&
-      this.unlocked &&
-      !this.muted &&
+      this.canUseAudio() &&
       !this.unavailable.has(id) &&
       this.registry.has(id)
     );
   }
 
+  private canUseAudio(): boolean {
+    return Boolean(typeof window !== "undefined" && this.unlocked && !this.muted);
+  }
+
   private resolveVolume(id: SoundId, override?: number): number {
     const base = override ?? GAME_CONFIG.audio.volumes[id];
-    return Math.max(0, Math.min(1, base * GAME_CONFIG.audio.masterVolume));
+    return this.clampVolume(base * GAME_CONFIG.audio.sfxVolume * GAME_CONFIG.audio.masterVolume);
+  }
+
+  private resolveMusicVolume(override?: number): number {
+    const base = override ?? GAME_CONFIG.audio.musicVolume;
+    return this.clampVolume(base * GAME_CONFIG.audio.masterVolume);
+  }
+
+  private clampVolume(volume: number): number {
+    return Math.max(0, Math.min(1, volume));
+  }
+
+  private playMusicState(music: MusicState, onReady: () => void): void {
+    if (!music.audio.paused) {
+      onReady();
+      return;
+    }
+
+    music.audio.play()
+      .then(onReady)
+      .catch(() => {
+        if (this.currentMusic === music) this.currentMusic = null;
+        this.unavailableMusic.add(music.id);
+      });
+  }
+
+  private updateMusicTarget(
+    music: MusicState,
+    targetVolume: number,
+    fadeSeconds: number,
+    onDone?: () => void
+  ): void {
+    const clampedTarget = this.clampVolume(targetVolume);
+    if (
+      Math.abs(music.targetVolume - clampedTarget) < 0.003 &&
+      !music.audio.paused &&
+      !onDone
+    ) {
+      return;
+    }
+
+    music.targetVolume = clampedTarget;
+    this.fadeMusic(music, clampedTarget, fadeSeconds, onDone);
+  }
+
+  private clearMusicDuckTimer(): void {
+    if (this.musicRestoreId === null || typeof window === "undefined") return;
+    window.clearTimeout(this.musicRestoreId);
+    this.musicRestoreId = null;
   }
 
   private fadeLoop(
@@ -212,6 +380,35 @@ class AudioManager {
       if (t >= 1 && loop.fadeId !== null) {
         window.clearInterval(loop.fadeId);
         loop.fadeId = null;
+        onDone?.();
+      }
+    }, 16);
+  }
+
+  private fadeMusic(
+    music: MusicState,
+    targetVolume: number,
+    seconds: number,
+    onDone?: () => void
+  ): void {
+    if (music.fadeId !== null) window.clearInterval(music.fadeId);
+
+    if (seconds <= 0) {
+      music.audio.volume = targetVolume;
+      onDone?.();
+      return;
+    }
+
+    const startVolume = music.audio.volume;
+    const startAt = performance.now();
+    const durationMs = seconds * 1000;
+
+    music.fadeId = window.setInterval(() => {
+      const t = Math.min(1, (performance.now() - startAt) / durationMs);
+      music.audio.volume = startVolume + (targetVolume - startVolume) * t;
+      if (t >= 1 && music.fadeId !== null) {
+        window.clearInterval(music.fadeId);
+        music.fadeId = null;
         onDone?.();
       }
     }, 16);

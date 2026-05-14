@@ -2,16 +2,19 @@
 
 ## Goal
 
-Hook up Runtime Rush sound effects without changing gameplay behavior or scattering direct audio calls through the game.
+Hook up Runtime Rush sound effects and a subtle gameplay music bed without changing gameplay behavior or scattering direct audio calls through the game.
 
 ## What changed
 
 - Copied root `sfx/*.mp3` files into `public/sfx/` so the browser can load them at `/sfx/*.mp3`.
 - Added `audioManager.ts`:
   - registers all listed MP3 files
+  - registers the gameplay music loop
   - preloads sounds
   - plays one-shots
   - manages loops
+  - fades gameplay music in/out
+  - ducks gameplay music under major SFX
   - fades loops
   - supports playback rate
   - supports mute/unmute with localStorage persistence
@@ -23,6 +26,7 @@ Hook up Runtime Rush sound effects without changing gameplay behavior or scatter
 - Added `queueAudioEvent` helper so systems emit sound events without calling audio directly.
 - Added `M` mute toggle and HUD `[M] SOUND ON/OFF` status.
 - Added `GAME_CONFIG.audio` for volumes and cooldowns.
+- Added separate `masterVolume`, `sfxVolume`, and `musicVolume` controls in config.
 
 ## Sound mapping
 
@@ -42,6 +46,16 @@ Hook up Runtime Rush sound effects without changing gameplay behavior or scatter
 - Game over: run end, delayed slightly after crash.
 - Scenery shift: once when crossing each new 20,000 score scenery tier; coalesced/cooldown-limited and suppressed if the same frame has crash/game over audio.
 - High score: run end when the score beats previous best.
+
+## Music mapping
+
+- Gameplay loop: `public/sfx/main_gameplay_loop.mp3`
+- Starts only after browser audio has been unlocked by keyboard, pointer, or touch input.
+- Fades in during `playing`.
+- Fades out and resets on game over.
+- Pauses/fades down when the page is hidden.
+- Mute affects both music and SFX.
+- Music ducks under Patch Pulse use, crash, game over, and high-score audio.
 
 ## Files changed
 

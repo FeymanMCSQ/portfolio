@@ -32,10 +32,16 @@ export function updateAudioSystem(
 
   updateAccelerationLoop(state, input);
   drainAudioEvents(state);
+  updateGameplayMusic(state);
 }
 
 export function isAudioMuted(): boolean {
   return audioManager.isMuted();
+}
+
+export function shutdownAudio(): void {
+  audioManager.stopAllLoops();
+  audioManager.stopMusic(0.08, false);
 }
 
 function updateAccelerationLoop(state: GameState, input: InputState): void {
@@ -94,14 +100,21 @@ function drainAudioEvents(state: GameState): void {
         break;
       case "crash":
         audioManager.stopLoop("acceleration", 0.04);
+        audioManager.duckMusic();
         audioManager.play("crash");
         break;
       case "game_over":
         audioManager.stopLoop("acceleration", 0.04);
+        audioManager.duckMusic();
         audioManager.play("game_over", { delayMs: 240 });
         break;
       case "high_score":
+        audioManager.duckMusic(AU.musicDuckHoldSeconds + 0.55);
         audioManager.play("high_score", { delayMs: 520 });
+        break;
+      case "blast_use":
+        audioManager.duckMusic();
+        audioManager.play("blast_use");
         break;
       case "perfect_pump":
         audioManager.play("perfect_pump");
@@ -117,6 +130,21 @@ function drainAudioEvents(state: GameState): void {
         break;
     }
   }
+}
+
+function updateGameplayMusic(state: GameState): void {
+  const pageHidden = typeof document !== "undefined" && document.hidden;
+  if (state.phase === "playing" && !pageHidden) {
+    audioManager.startMusic("gameplay", GAME_CONFIG.audio.musicFadeInSeconds);
+    return;
+  }
+
+  if (state.phase === "playing" && pageHidden) {
+    audioManager.pauseMusic(GAME_CONFIG.audio.musicPauseFadeSeconds);
+    return;
+  }
+
+  audioManager.stopMusic(GAME_CONFIG.audio.musicFadeOutSeconds, true);
 }
 
 function randomRate(min: number, max: number): number {
