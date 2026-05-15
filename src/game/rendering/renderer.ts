@@ -1252,16 +1252,17 @@ function drawGeneratorDebug(ctx: CanvasRenderingContext2D, state: GameState): vo
   const lines = [
     `GEN ${debug.seed}`,
     `PATTERN ${debug.currentPatternId} (${debug.currentPatternDifficulty})`,
-    `SCORE TIER ${Math.floor(state.score / GN.scoreTierSize)}  SEQ ${state.terrainPatternIndex}`,
-    `HARD STREAK ${debug.hardStreak}`,
+    `BUDGET ${debug.currentDifficultyBudget}`,
+    `TIER ${Math.floor(state.score / GN.scoreTierSize)}  SEQ ${state.terrainPatternIndex}`,
+    `STREAK hard:${debug.hardStreak} challenge:${debug.challengeStreak}`,
     `RECENT ${recent}`,
     `REJECT ${rejected}`,
   ];
 
   const x = 14;
-  const y = CV.height - 104;
+  const y = CV.height - 118;
   const w = 390;
-  const h = 90;
+  const h = 104;
 
   ctx.save();
   ctx.fillStyle = "rgba(14, 18, 30, 0.64)";

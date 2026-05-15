@@ -89,7 +89,9 @@ export interface TerrainGeneratorState {
   currentScoreTier: number;
   recentPatternIds: string[];
   rejectedPatternReason: string;
+  currentDifficultyBudget: string;
   hardStreak: number;
+  challengeStreak: number;
   lastWasRecovery: boolean;
 }
 

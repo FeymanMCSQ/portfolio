@@ -65,12 +65,14 @@ None. Pattern-based terrain validation just completed.
 ### Pattern validation generator (done)
 - Terrain generation is now selected from formal pattern metadata instead of a fixed pattern cycle
 - Supported patterns: safe flat, recovery, ramp reward arc, upper ledge, downhill pump, obstacle reward, ring gate
-- Each pattern declares difficulty, approximate length, entry-speed range, safe/risky path flags, required inputs, preferred next patterns, and validation data
-- Candidate patterns are selected deterministically from `generation.seed`, pattern index, and distance tier
+- Each pattern declares difficulty, approximate length, entry-speed range, obstacle count, reward value, safe/risky path flags, required inputs, preferred next patterns, and validation data
+- Candidate difficulty is selected from score-tier weighted distributions: early 40/35/10/15, mid 20/40/25/15, high 10/35/40/15 for easy/medium/hard/recovery
+- Candidate patterns are selected deterministically from `generation.seed`, pattern index, score tier, and distance tier
 - Validation rejects sections with impossible safe gaps, unreachable risky gaps, too-short landings, blind landing obstacles, unreachable upper ledges, missing safe paths, or invalid difficulty rhythm
-- Hard patterns are gated until later tiers and are followed by easier/recovery candidates before more hard content can appear
-- If no candidate validates within the retry limit, generation falls back to safe flat or recovery
-- Debug overlay shows seed, current pattern, difficulty, score tier, sequence index, hard streak, recent history, and latest rejection/fallback reason
+- Hard patterns must meet challenge contracts: risk/reward route, jump/pump requirement, minimum obstacle count, and minimum reward value
+- Fallback order keeps pressure: failed hard candidates try other hard patterns first, then medium, then easy; recovery is reserved for forced recovery or exhausted fallbacks
+- Recovery cannot chain and is usually allowed only after hard or sustained medium/hard sequences
+- Debug overlay shows seed, current pattern, difficulty, distribution budget, score tier, sequence index, hard/challenge streak, recent history, and latest rejection/fallback reason
 
 ### Deterministic endless progress (Quest 09 — done)
 - Runs are endless: the old 60-second survival win condition and `"won"` phase were removed

@@ -55,6 +55,11 @@ interface RoutePattern {
   length: number;
   minEntrySpeed: number;
   maxEntrySpeed: number;
+  obstacleCount: number;
+  rewardValue: number;
+  minObstacleCount?: number;
+  minRewardValue?: number;
+  requiresJumpOrPump?: boolean;
   hasSafePath: boolean;
   hasRiskRewardPath: boolean;
   requiresJump: boolean;
@@ -77,6 +82,8 @@ interface GeneratorContext {
   maxJumpHeight: number;
 }
 
+type DifficultyDistribution = Record<TerrainPatternDifficulty, number>;
+
 const TERRAIN_Y_MIN = 180;          // don't climb above background structures
 const TERRAIN_Y_MAX = CV.height + 60; // camera follows lower terrain; this stops runaway drift
 const LOWER_RETURN_GAP = 150;
@@ -91,6 +98,8 @@ const ROUTE_PATTERNS: RoutePattern[] = [
     length: T.flatLength * 0.95,
     minEntrySpeed: 0,
     maxEntrySpeed: P.maxSpeed * 2,
+    obstacleCount: 0,
+    rewardValue: 0,
     hasSafePath: true,
     hasRiskRewardPath: false,
     requiresJump: false,
@@ -105,6 +114,8 @@ const ROUTE_PATTERNS: RoutePattern[] = [
     length: T.flatLength * 0.85,
     minEntrySpeed: 0,
     maxEntrySpeed: P.maxSpeed * 2,
+    obstacleCount: 0,
+    rewardValue: 0,
     hasSafePath: true,
     hasRiskRewardPath: false,
     requiresJump: false,
@@ -116,9 +127,14 @@ const ROUTE_PATTERNS: RoutePattern[] = [
   {
     id: "ramp-reward-arc",
     difficulty: "hard",
-    length: 1205,
+    length: 2055,
     minEntrySpeed: 220,
     maxEntrySpeed: P.maxSpeed * 2,
+    obstacleCount: 2,
+    rewardValue: RW.ringBonus + 900,
+    minObstacleCount: 2,
+    minRewardValue: RW.ringBonus,
+    requiresJumpOrPump: true,
     hasSafePath: true,
     hasRiskRewardPath: true,
     requiresJump: true,
@@ -138,6 +154,8 @@ const ROUTE_PATTERNS: RoutePattern[] = [
     length: 1520,
     minEntrySpeed: 180,
     maxEntrySpeed: P.maxSpeed * 2,
+    obstacleCount: 1,
+    rewardValue: 700,
     hasSafePath: true,
     hasRiskRewardPath: true,
     requiresJump: true,
@@ -153,9 +171,14 @@ const ROUTE_PATTERNS: RoutePattern[] = [
   {
     id: "downhill-pump",
     difficulty: "hard",
-    length: 1200,
+    length: 1840,
     minEntrySpeed: 170,
     maxEntrySpeed: P.maxSpeed * 2,
+    obstacleCount: 2,
+    rewardValue: 1200,
+    minObstacleCount: 2,
+    minRewardValue: 650,
+    requiresJumpOrPump: true,
     hasSafePath: true,
     hasRiskRewardPath: true,
     requiresJump: true,
@@ -175,6 +198,8 @@ const ROUTE_PATTERNS: RoutePattern[] = [
     length: 1000,
     minEntrySpeed: 120,
     maxEntrySpeed: P.maxSpeed * 2,
+    obstacleCount: 1,
+    rewardValue: 450,
     hasSafePath: true,
     hasRiskRewardPath: true,
     requiresJump: true,
@@ -193,6 +218,8 @@ const ROUTE_PATTERNS: RoutePattern[] = [
     length: 1180,
     minEntrySpeed: 160,
     maxEntrySpeed: P.maxSpeed * 2,
+    obstacleCount: 0,
+    rewardValue: RW.ringBonus,
     hasSafePath: true,
     hasRiskRewardPath: true,
     requiresJump: false,
@@ -358,39 +385,41 @@ export function surfaceYAtX(segment: TerrainSegment, x: number): number {
 
 function selectRoutePattern(state: GameState, tail: TerrainSegment): RoutePattern {
   const context = buildGeneratorContext(state, tail);
-  const forcedRecovery = state.terrainGenerator.hardStreak >= G.hardStreakLimit;
-  const candidatePool = forcedRecovery
-    ? getPatternsById(["recovery", "safe-flat"])
-    : getCandidatePool(state, context);
-
-  const seedOffset = stableSeedHash(state.terrainGenerator.seed);
-  const preferredCandidateCount = forcedRecovery
-    ? candidatePool.length
-    : countPreferredCandidates(state, candidatePool);
-  const selectionRange = preferredCandidateCount > 0
-    ? preferredCandidateCount
-    : candidatePool.length;
-  const startIndex = candidatePool.length === 0
-    ? 0
-    : (state.terrainPatternIndex * 3 + context.distanceTier + seedOffset) % selectionRange;
+  const forcedRecovery = shouldForceRecovery(state);
+  const targetDifficulty = forcedRecovery
+    ? "recovery"
+    : chooseTargetDifficulty(state, context);
+  const fallbackOrder = getFallbackDifficultyOrder(targetDifficulty, forcedRecovery);
 
   let lastRejected = forcedRecovery
-    ? `forced recovery after ${state.terrainGenerator.hardStreak} hard patterns`
+    ? `forced recovery after hard:${state.terrainGenerator.hardStreak} challenge:${state.terrainGenerator.challengeStreak}`
     : "";
+  state.terrainGenerator.currentDifficultyBudget = buildDifficultyBudgetLabel(
+    context,
+    targetDifficulty,
+    forcedRecovery
+  );
 
-  const attempts = Math.min(G.maxPatternSelectionAttempts, candidatePool.length);
-  for (let i = 0; i < attempts; i += 1) {
-    const pattern = candidatePool[(startIndex + i) % candidatePool.length];
-    const result = validatePatternPlacement(pattern, context, state);
-    if (result.valid) {
-      state.terrainGenerator.rejectedPatternReason = lastRejected;
-      state.terrainGenerator.currentScoreTier = context.scoreTier;
-      return pattern;
+  for (const difficulty of fallbackOrder) {
+    const candidates = getCandidatePool(state, context, difficulty);
+    const attempts = Math.min(G.maxPatternSelectionAttempts, candidates.length);
+    const startIndex = getCandidateStartIndex(state, context, difficulty, candidates.length);
+
+    for (let i = 0; i < attempts; i += 1) {
+      const pattern = candidates[(startIndex + i) % candidates.length];
+      const result = validatePatternPlacement(pattern, context, state);
+      if (result.valid) {
+        state.terrainGenerator.rejectedPatternReason = lastRejected;
+        state.terrainGenerator.currentScoreTier = context.scoreTier;
+        return pattern;
+      }
+      lastRejected = `${pattern.id}: ${result.reason}`;
     }
-    lastRejected = `${pattern.id}: ${result.reason}`;
   }
 
-  const fallbackId = forcedRecovery ? "recovery" : "safe-flat";
+  const fallbackId = forcedRecovery && !state.terrainGenerator.lastWasRecovery
+    ? "recovery"
+    : "safe-flat";
   state.terrainGenerator.rejectedPatternReason =
     `fallback ${fallbackId}${lastRejected ? ` after ${lastRejected}` : ""}`;
   state.terrainGenerator.currentScoreTier = context.scoreTier;
@@ -399,7 +428,8 @@ function selectRoutePattern(state: GameState, tail: TerrainSegment): RoutePatter
 
 function getCandidatePool(
   state: GameState,
-  context: GeneratorContext
+  context: GeneratorContext,
+  difficulty: TerrainPatternDifficulty
 ): RoutePattern[] {
   const previousId = state.terrainGenerator.currentPatternId;
   const previous = ROUTE_PATTERNS.find((pattern) => pattern.id === previousId);
@@ -408,14 +438,8 @@ function getCandidatePool(
     : [];
 
   const allowed = ROUTE_PATTERNS.filter((pattern) => {
-    if (pattern.difficulty === "hard" && context.difficultyTier < 2) return false;
-    if (pattern.difficulty === "medium" && context.difficultyTier < 1) {
-      return pattern.id === "obstacle-reward" || pattern.id === "ring-gate";
-    }
-    if (pattern.difficulty === "hard" && state.terrainGenerator.hardStreak >= G.hardStreakLimit) {
-      return false;
-    }
-    return true;
+    if (pattern.difficulty !== difficulty) return false;
+    return isDifficultyAllowed(pattern, context, state);
   });
 
   const preferredAllowed = preferred.filter((pattern) => allowed.includes(pattern));
@@ -423,14 +447,82 @@ function getCandidatePool(
   return [...preferredAllowed, ...remaining];
 }
 
-function countPreferredCandidates(state: GameState, candidates: RoutePattern[]): number {
-  const previous = ROUTE_PATTERNS.find(
-    (pattern) => pattern.id === state.terrainGenerator.currentPatternId
+function getCandidateStartIndex(
+  state: GameState,
+  context: GeneratorContext,
+  difficulty: TerrainPatternDifficulty,
+  candidateCount: number
+): number {
+  if (candidateCount <= 1) return 0;
+  return Math.floor(
+    seededUnit(state, context, `candidate-${difficulty}`) * candidateCount
+  ) % candidateCount;
+}
+
+function shouldForceRecovery(state: GameState): boolean {
+  if (state.terrainGenerator.lastWasRecovery) return false;
+  return (
+    state.terrainGenerator.hardStreak >= G.hardStreakLimit ||
+    state.terrainGenerator.challengeStreak >= G.challengeStreakRecoveryLimit
   );
-  if (!previous?.preferredNextPatterns) return 0;
-  return candidates.filter((candidate) =>
-    previous.preferredNextPatterns?.includes(candidate.id)
-  ).length;
+}
+
+function chooseTargetDifficulty(
+  state: GameState,
+  context: GeneratorContext
+): TerrainPatternDifficulty {
+  const distribution = getDifficultyDistribution(context.scoreTier);
+  const roll = seededUnit(state, context, "difficulty");
+  let cursor = 0;
+
+  for (const difficulty of ["easy", "medium", "hard", "recovery"] as TerrainPatternDifficulty[]) {
+    cursor += distribution[difficulty];
+    if (roll <= cursor) return difficulty;
+  }
+
+  return "medium";
+}
+
+function getDifficultyDistribution(scoreTier: number): DifficultyDistribution {
+  if (scoreTier >= G.highScoreTier) return G.patternDistribution.high;
+  if (scoreTier >= G.midScoreTier) return G.patternDistribution.mid;
+  return G.patternDistribution.early;
+}
+
+function getDistributionName(scoreTier: number): "early" | "mid" | "high" {
+  if (scoreTier >= G.highScoreTier) return "high";
+  if (scoreTier >= G.midScoreTier) return "mid";
+  return "early";
+}
+
+function getFallbackDifficultyOrder(
+  target: TerrainPatternDifficulty,
+  forcedRecovery: boolean
+): TerrainPatternDifficulty[] {
+  if (forcedRecovery) return ["recovery", "easy", "medium", "hard"];
+
+  switch (target) {
+    case "hard":
+      return ["hard", "medium", "easy", "recovery"];
+    case "medium":
+      return ["medium", "hard", "easy", "recovery"];
+    case "easy":
+      return ["easy", "medium", "hard", "recovery"];
+    case "recovery":
+      return ["recovery", "easy", "medium", "hard"];
+  }
+}
+
+function buildDifficultyBudgetLabel(
+  context: GeneratorContext,
+  target: TerrainPatternDifficulty,
+  forcedRecovery: boolean
+): string {
+  const name = getDistributionName(context.scoreTier);
+  const distribution = getDifficultyDistribution(context.scoreTier);
+  return `${name} target:${target}${forcedRecovery ? " forced" : ""} ` +
+    `e${Math.round(distribution.easy * 100)}/m${Math.round(distribution.medium * 100)}/` +
+    `h${Math.round(distribution.hard * 100)}/r${Math.round(distribution.recovery * 100)}`;
 }
 
 function validatePatternPlacement(
@@ -448,6 +540,11 @@ function validatePatternPlacement(
 
   if (!isDifficultyAllowed(pattern, context, state)) {
     return { valid: false, reason: `difficulty ${pattern.difficulty} not allowed yet` };
+  }
+
+  if (pattern.difficulty === "hard") {
+    const hardContract = validateHardPatternContract(pattern);
+    if (!hardContract.valid) return hardContract;
   }
 
   if (pattern.minEntrySpeed > context.estimatedEntrySpeed + 80) {
@@ -528,17 +625,54 @@ function isDifficultyAllowed(
   context: GeneratorContext,
   state: GameState
 ): boolean {
-  if (pattern.difficulty === "hard") {
-    return context.difficultyTier >= 2 && state.terrainGenerator.hardStreak < G.hardStreakLimit;
+  if (pattern.difficulty === "recovery") {
+    return (
+      !state.terrainGenerator.lastWasRecovery &&
+      (state.terrainGenerator.hardStreak > 0 ||
+        state.terrainGenerator.challengeStreak >= 2 ||
+        state.terrainPatternIndex <= 1)
+    );
   }
 
-  if (pattern.difficulty === "medium") {
-    return context.difficultyTier >= 1 ||
-      pattern.id === "obstacle-reward" ||
-      pattern.id === "ring-gate";
+  if (pattern.difficulty === "hard") {
+    return (
+      state.terrainPatternIndex >= G.initialSafePatternCount &&
+      state.terrainGenerator.hardStreak < G.hardStreakLimit
+    );
   }
 
   return true;
+}
+
+function validateHardPatternContract(
+  pattern: RoutePattern
+): { valid: true } | { valid: false; reason: string } {
+  const minObstacleCount = pattern.minObstacleCount ?? G.hardPatternMinObstacleCount;
+  const minRewardValue = pattern.minRewardValue ?? G.hardPatternMinRewardValue;
+
+  if (!pattern.hasRiskRewardPath) {
+    return { valid: false, reason: "hard pattern missing risk/reward path" };
+  }
+
+  if (pattern.obstacleCount < minObstacleCount) {
+    return {
+      valid: false,
+      reason: `hard obstacles ${pattern.obstacleCount} < ${minObstacleCount}`,
+    };
+  }
+
+  if (pattern.rewardValue < minRewardValue) {
+    return {
+      valid: false,
+      reason: `hard reward ${pattern.rewardValue} < ${minRewardValue}`,
+    };
+  }
+
+  if (pattern.requiresJumpOrPump && !pattern.requiresJump && !pattern.requiresPump) {
+    return { valid: false, reason: "hard pattern lacks jump/pump requirement" };
+  }
+
+  return { valid: true };
 }
 
 function buildGeneratorContext(
@@ -602,6 +736,10 @@ function recordPatternPlacement(state: GameState, pattern: RoutePattern): void {
   generator.hardStreak = pattern.difficulty === "hard"
     ? generator.hardStreak + 1
     : 0;
+  generator.challengeStreak =
+    pattern.difficulty === "hard" || pattern.difficulty === "medium"
+      ? generator.challengeStreak + 1
+      : 0;
   generator.lastWasRecovery = pattern.difficulty === "recovery";
 }
 
@@ -621,6 +759,21 @@ function stableSeedHash(seed: string): number {
     hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
   }
   return hash;
+}
+
+function seededUnit(
+  state: GameState,
+  context: GeneratorContext,
+  salt: string
+): number {
+  const key = [
+    state.terrainGenerator.seed,
+    state.terrainPatternIndex,
+    context.scoreTier,
+    context.distanceTier,
+    salt,
+  ].join(":");
+  return stableSeedHash(key) / 0xffffffff;
 }
 
 // ─── Route pattern library ───────────────────────────────────────────────────
@@ -738,14 +891,28 @@ function buildRampArcPattern(
     riskLevel: 2,
     riskLabel: "RAMP LINE",
   });
-  const returnSlope = addSegment(state, "downhill", highLanding.endX, highLanding.endY, {
+  const secondSetup = addSegment(state, "flat", highLanding.endX, highLanding.endY, {
+    length: 120,
+    route: "main",
+    surfaceKind: "ground",
+    riskLevel: 1,
+    riskLabel: "RAMP LINE",
+  });
+  const secondObstacle = addSegment(state, "flat-obstacle", secondSetup.endX, secondSetup.endY, {
+    length: 300,
+    route: "main",
+    surfaceKind: "ground",
+    riskLevel: 2,
+    riskLabel: "RAMP LINE",
+  });
+  const returnSlope = addSegment(state, "downhill", secondObstacle.endX, secondObstacle.endY, {
     length: T.slopeLength,
     endY: startY,
     route: "main",
     surfaceKind: "ground",
   });
   addEnergyRing(state, ramp.endX + 120, ramp.endY - 86);
-  addScoreSurgeToken(state, highLanding.startX + 245, highLanding.endY - 32);
+  addScoreSurgeToken(state, secondObstacle.startX + 90, secondObstacle.endY - 32);
   return addSegment(state, "flat", returnSlope.endX, returnSlope.endY, {
     length: 220,
     route: "main",
@@ -807,8 +974,18 @@ function buildRedDropPattern(
     route: "main",
     surfaceKind: "platform",
   });
-  const safeBridge = addSegment(state, "flat-platform", redRamp.endX, redRamp.endY, {
-    length: 820,
+  const safeBridgeIntro = addSegment(state, "flat-platform", redRamp.endX, redRamp.endY, {
+    length: 300,
+    route: "main",
+    surfaceKind: "platform",
+  });
+  const safeBridgeHazard = addSegment(state, "flat-obstacle", safeBridgeIntro.endX, safeBridgeIntro.endY, {
+    length: 320,
+    route: "main",
+    surfaceKind: "platform",
+  });
+  const safeBridge = addSegment(state, "flat-platform", safeBridgeHazard.endX, safeBridgeHazard.endY, {
+    length: 280,
     route: "main",
     surfaceKind: "platform",
   });

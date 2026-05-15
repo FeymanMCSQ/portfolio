@@ -7,7 +7,7 @@ Make procedural terrain generation coherent, deterministic, and fair by choosing
 ## What changed
 
 - Formalized route pattern metadata inside `terrainSystem.ts`.
-- Added generator state to `GameState` for seed, current pattern, current difficulty, score tier, recent history, rejected reason, and hard streak.
+- Added generator state to `GameState` for seed, current pattern, current difficulty, score tier, distribution budget, recent history, rejected reason, hard streak, and challenge streak.
 - Added `GAME_CONFIG.generation` for seed, score tier size, distance difficulty tier length, retry count, rhythm limits, reachability margins, landing width, blind landing buffer, and debug overlay toggle.
 - Replaced the fixed route-pattern cycle with deterministic candidate selection.
 - Added compatibility validation before building a pattern:
@@ -16,9 +16,13 @@ Make procedural terrain generation coherent, deterministic, and fair by choosing
   - rejects upper ledges that exceed configured jump reach
   - rejects too-short landing platforms
   - rejects obstacles too close after landings
-  - gates hard patterns until later difficulty tiers
+  - verifies hard patterns meet challenge contracts
   - prevents endless hard-pattern chains
-- Added fallback to `safe-flat` or `recovery` when candidates fail validation.
+- Added score-tier weighted distribution:
+  - 0-20,000: 40% easy, 35% medium, 10% hard, 15% recovery
+  - 20,000-60,000: 20% easy, 40% medium, 25% hard, 15% recovery
+  - 60,000+: 10% easy, 35% medium, 40% hard, 15% recovery
+- Added ordered fallback so failed hard patterns try other hard patterns before medium/easy; recovery is not the immediate fallback unless the rhythm budget requires it.
 - Added a small generator debug panel in the canvas HUD.
 
 ## Supported patterns
@@ -44,9 +48,11 @@ Displays:
 - generator seed
 - current pattern id
 - pattern difficulty
+- active distribution budget
 - score tier
 - pattern sequence index
 - hard streak
+- challenge streak
 - recent pattern history
 - latest rejected pattern/fallback reason
 

@@ -126,6 +126,8 @@ export const GAME_CONFIG = {
     difficultyDistanceTierLength: 4200,
     maxPatternSelectionAttempts: 8,
     hardStreakLimit: 2,
+    challengeStreakRecoveryLimit: 4,
+    initialSafePatternCount: 2,
     debugOverlay: true,
     debugHistorySize: 6,
     reactionTimeSeconds: 0.2,
@@ -136,6 +138,15 @@ export const GAME_CONFIG = {
     upperLedgeReachSafety: 0.78,
     minimumLandingWidth: 180,
     blindLandingObstacleBuffer: 170,
+    hardPatternMinObstacleCount: 2,
+    hardPatternMinRewardValue: 650,
+    midScoreTier: 1,
+    highScoreTier: 3,
+    patternDistribution: {
+      early: { easy: 0.4, medium: 0.35, hard: 0.1, recovery: 0.15 },
+      mid: { easy: 0.2, medium: 0.4, hard: 0.25, recovery: 0.15 },
+      high: { easy: 0.1, medium: 0.35, hard: 0.4, recovery: 0.15 },
+    },
   },
 
   audio: {
