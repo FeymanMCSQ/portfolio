@@ -14,6 +14,7 @@ import { renderFrame } from "../rendering/renderer";
 import { createInitialGameState } from "./gameState";
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { InputState } from "../systems/inputManager";
+import type { GamePhase } from "./types";
 
 const MAX_DELTA = 0.05;
 const SCENERY_SCORE_TIER = 20000;
@@ -22,7 +23,11 @@ const CV = GAME_CONFIG.canvas;
 export function createGameLoop(
   canvas: HTMLCanvasElement,
   getInput: () => InputState
-): { start: () => void; stop: () => void } {
+): {
+  start: () => void;
+  stop: () => void;
+  getControlStatus: () => GameControlStatus;
+} {
   let rafId: number | null = null;
   let lastTimestamp: number | null = null;
   let state = createInitialGameState();
@@ -110,7 +115,31 @@ export function createGameLoop(
       lastTimestamp = null;
       shutdownAudio();
     },
+    getControlStatus() {
+      return {
+        phase: state.phase,
+        focusAvailable:
+          state.focusActive ||
+          state.focusMeter >= GAME_CONFIG.focus.activationThreshold,
+        focusActive: state.focusActive,
+        patchAvailable: state.patchCount > 0,
+        patchCount: state.patchCount,
+        pumpAvailable:
+          state.phase === "playing" &&
+          state.player.isGrounded &&
+          state.pumpCooldown <= 0,
+      };
+    },
   };
+}
+
+export interface GameControlStatus {
+  phase: GamePhase;
+  focusAvailable: boolean;
+  focusActive: boolean;
+  patchAvailable: boolean;
+  patchCount: number;
+  pumpAvailable: boolean;
 }
 
 function prepareRenderContext(

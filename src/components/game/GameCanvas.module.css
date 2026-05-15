@@ -52,6 +52,130 @@
   user-select: none;
 }
 
+.mobileControls {
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  display: none;
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.touchZone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: rgba(232, 234, 255, 0.48);
+  cursor: pointer;
+  appearance: none;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.leftTouchZone {
+  left: 0;
+}
+
+.rightTouchZone {
+  right: 0;
+}
+
+.touchHint {
+  position: absolute;
+  bottom: clamp(76px, 14vmin, 118px);
+  padding: 5px 8px;
+  border: 1px solid rgba(64, 200, 176, 0.24);
+  border-radius: 5px;
+  background: rgba(7, 13, 20, 0.36);
+  color: rgba(232, 234, 255, 0.55);
+  font: 700 clamp(9px, 1.8vmin, 12px) "Courier New", Courier, monospace;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  animation: fadeTouchHint 7s ease forwards;
+}
+
+.leftTouchZone .touchHint {
+  left: clamp(18px, 4vmin, 36px);
+}
+
+.rightTouchZone .touchHint {
+  right: clamp(18px, 4vmin, 36px);
+}
+
+.touchButton {
+  position: absolute;
+  z-index: 2;
+  min-width: clamp(78px, 14vmin, 112px);
+  min-height: clamp(48px, 8.4vmin, 68px);
+  display: inline-grid;
+  place-items: center;
+  padding: 0 10px;
+  border: 1px solid rgba(64, 200, 176, 0.46);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(12, 24, 31, 0.74), rgba(7, 11, 18, 0.6));
+  box-shadow:
+    inset 0 0 0 1px rgba(232, 234, 255, 0.07),
+    0 0 24px rgba(64, 200, 176, 0.14);
+  color: rgba(237, 242, 255, 0.88);
+  font: 800 clamp(11px, 2.2vmin, 15px) "Courier New", Courier, monospace;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  cursor: pointer;
+  appearance: none;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touchButton:active,
+.touchButton[data-active="true"] {
+  border-color: rgba(255, 222, 92, 0.8);
+  background:
+    linear-gradient(180deg, rgba(48, 52, 34, 0.84), rgba(15, 18, 19, 0.7));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 222, 92, 0.24),
+    0 0 28px rgba(255, 222, 92, 0.22);
+}
+
+.touchButton:disabled {
+  cursor: default;
+  opacity: 0.36;
+  filter: saturate(0.55);
+  box-shadow: none;
+}
+
+.touchButtonMeta {
+  margin-top: 4px;
+  color: rgba(138, 255, 174, 0.82);
+  font-size: 0.72em;
+}
+
+.focusButton {
+  left: clamp(16px, 3.4vmin, 30px);
+  bottom: clamp(16px, 3.4vmin, 30px);
+}
+
+.pumpButton {
+  left: clamp(16px, 3.4vmin, 30px);
+  bottom: clamp(74px, 13.6vmin, 104px);
+  min-width: clamp(66px, 11.5vmin, 92px);
+  min-height: clamp(42px, 7.4vmin, 58px);
+  font-size: clamp(10px, 2vmin, 13px);
+}
+
+.patchButton {
+  right: clamp(76px, 11vmin, 104px);
+  bottom: clamp(16px, 3.4vmin, 30px);
+}
+
 .frameActions {
   position: absolute;
   top: clamp(8px, 1.4vmin, 14px);
@@ -158,5 +282,30 @@
     min-width: 48px;
     min-height: 28px;
     font-size: 10px;
+  }
+
+  .touchHint {
+    bottom: clamp(62px, 12vmin, 88px);
+  }
+
+  .pumpButton {
+    bottom: clamp(62px, 12vmin, 86px);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) {
+  .mobileControls {
+    display: block;
+  }
+}
+
+@keyframes fadeTouchHint {
+  0%,
+  48% {
+    opacity: 0.7;
+  }
+
+  100% {
+    opacity: 0;
   }
 }

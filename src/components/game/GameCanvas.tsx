@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { createInputManager } from "@/game/systems/inputManager";
-import { createGameLoop } from "@/game/core/gameLoop";
-import { GAME_CONFIG } from "@/game/config/gameConfig";
+import { createInputManager, type InputManager, type TouchPressAction } from "@/game/systems/inputManager";
+import { createGameLoop, type GameControlStatus } from "@/game/core/gameLoop";
 import { initializeAudio } from "@/game/audio/audioSystem";
 import AdminPanel from "./AdminPanel";
 import styles from "./GameCanvas.module.css";
@@ -13,37 +12,31 @@ import styles from "./GameCanvas.module.css";
 const GAME_ASPECT = 16 / 9;
 const PORTRAIT_BLOCK_WIDTH = 760;
 const MAX_DPR = 3;
-const CV = GAME_CONFIG.canvas;
+const DEFAULT_CONTROL_STATUS: GameControlStatus = {
+  phase: "idle",
+  focusAvailable: false,
+  focusActive: false,
+  patchAvailable: false,
+  patchCount: 0,
+  pumpAvailable: false,
+};
 
 export default function GameCanvas() {
   const rootRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const inputRef = useRef<InputManager | null>(null);
   const [portraitBlocked, setPortraitBlocked] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [controlStatus, setControlStatus] = useState<GameControlStatus>(
+    DEFAULT_CONTROL_STATUS
+  );
 
   const updatePortraitState = useCallback(() => {
     const viewport = getViewportSize();
     setPortraitBlocked(
       viewport.width < viewport.height && viewport.width < PORTRAIT_BLOCK_WIDTH
     );
-  }, []);
-
-  const mapClientPoint = useCallback((clientX: number, clientY: number) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: clientX, y: clientY };
-
-    const rect = canvas.getBoundingClientRect();
-    const scale = Math.min(rect.width / CV.width, rect.height / CV.height);
-    const renderedWidth = CV.width * scale;
-    const renderedHeight = CV.height * scale;
-    const offsetX = (rect.width - renderedWidth) / 2;
-    const offsetY = (rect.height - renderedHeight) / 2;
-
-    return {
-      x: (clientX - rect.left - offsetX) / scale,
-      y: (clientY - rect.top - offsetY) / scale,
-    };
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -57,6 +50,37 @@ export default function GameCanvas() {
 
     void root.requestFullscreen?.();
   }, []);
+
+  const startAccelerating = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      event.preventDefault();
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      inputRef.current?.setTouchHold("accelerating", event.pointerId, true);
+    },
+    []
+  );
+
+  const stopAccelerating = useCallback(
+    (event: ReactPointerEvent<HTMLElement>) => {
+      event.preventDefault();
+      inputRef.current?.setTouchHold("accelerating", event.pointerId, false);
+    },
+    []
+  );
+
+  const pressTouchAction = useCallback(
+    (
+      event: ReactPointerEvent<HTMLElement>,
+      action: TouchPressAction,
+      enabled = true
+    ) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (!enabled) return;
+      inputRef.current?.pressTouchAction(action);
+    },
+    []
+  );
 
   useEffect(() => {
     updatePortraitState();
@@ -125,16 +149,30 @@ export default function GameCanvas() {
     if (!canvas) return;
 
     initializeAudio();
-    const input = createInputManager({ mapClientPoint });
+    const input = createInputManager();
     const loop = createGameLoop(canvas, input.getState);
+    inputRef.current = input;
 
+    const syncControlStatus = () => {
+      const next = loop.getControlStatus();
+      setControlStatus((current) =>
+        controlStatusEqual(current, next) ? current : next
+      );
+    };
+
+    syncControlStatus();
+    const statusTimer = window.setInterval(syncControlStatus, 120);
     loop.start();
 
     return () => {
+      window.clearInterval(statusTimer);
+      input.releaseAllTouch();
       loop.stop();
       input.destroy();
+      inputRef.current = null;
+      setControlStatus(DEFAULT_CONTROL_STATUS);
     };
-  }, [mapClientPoint, portraitBlocked]);
+  }, [portraitBlocked]);
 
   if (portraitBlocked) {
     return (
@@ -158,6 +196,7 @@ export default function GameCanvas() {
       ref={rootRef}
       className={styles.gameShell}
       style={{ "--game-aspect": String(GAME_ASPECT) } as CSSProperties}
+      onContextMenu={(event) => event.preventDefault()}
     >
       <div ref={frameRef} className={styles.gameFrame}>
         <canvas
@@ -165,6 +204,62 @@ export default function GameCanvas() {
           className={styles.canvas}
           aria-label="Runtime Rush game"
         />
+        <div className={styles.mobileControls} aria-label="Mobile game controls">
+          <button
+            type="button"
+            className={`${styles.touchZone} ${styles.leftTouchZone}`}
+            onPointerDown={startAccelerating}
+            onPointerUp={stopAccelerating}
+            onPointerCancel={stopAccelerating}
+            onLostPointerCapture={stopAccelerating}
+            aria-label="Hold to accelerate"
+          >
+            <span className={styles.touchHint}>HOLD = SPEED</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.touchZone} ${styles.rightTouchZone}`}
+            onPointerDown={(event) => {
+              pressTouchAction(event, "jump");
+              inputRef.current?.pressTouchAction("restart");
+            }}
+            aria-label="Tap to jump"
+          >
+            <span className={styles.touchHint}>TAP = JUMP</span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.touchButton} ${styles.focusButton}`}
+            disabled={!controlStatus.focusAvailable}
+            data-active={controlStatus.focusActive ? "true" : undefined}
+            onPointerDown={(event) =>
+              pressTouchAction(event, "focus", controlStatus.focusAvailable)
+            }
+          >
+            FOCUS
+          </button>
+          <button
+            type="button"
+            className={`${styles.touchButton} ${styles.pumpButton}`}
+            disabled={!controlStatus.pumpAvailable}
+            onPointerDown={(event) =>
+              pressTouchAction(event, "pump", controlStatus.pumpAvailable)
+            }
+          >
+            PUMP
+          </button>
+          <button
+            type="button"
+            className={`${styles.touchButton} ${styles.patchButton}`}
+            disabled={!controlStatus.patchAvailable}
+            onPointerDown={(event) =>
+              pressTouchAction(event, "usePatch", controlStatus.patchAvailable)
+            }
+          >
+            PATCH
+            <span className={styles.touchButtonMeta}>x{controlStatus.patchCount}</span>
+          </button>
+        </div>
         <div className={styles.frameActions}>
           <button
             type="button"
@@ -186,4 +281,18 @@ function getViewportSize(): { width: number; height: number } {
     width: window.visualViewport?.width ?? window.innerWidth,
     height: window.visualViewport?.height ?? window.innerHeight,
   };
+}
+
+function controlStatusEqual(
+  a: GameControlStatus,
+  b: GameControlStatus
+): boolean {
+  return (
+    a.phase === b.phase &&
+    a.focusAvailable === b.focusAvailable &&
+    a.focusActive === b.focusActive &&
+    a.patchAvailable === b.patchAvailable &&
+    a.patchCount === b.patchCount &&
+    a.pumpAvailable === b.pumpAvailable
+  );
 }

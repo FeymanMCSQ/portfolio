@@ -10,18 +10,19 @@ export interface InputState {
   mute: boolean;
 }
 
-interface InputManagerOptions {
-  mapClientPoint?: (clientX: number, clientY: number) => { x: number; y: number };
-}
+export type TouchHoldAction = "accelerating";
+export type TouchPressAction = "jump" | "restart" | "focus" | "usePatch" | "pump" | "mute";
 
-export function createInputManager(options: InputManagerOptions = {}): {
+export interface InputManager {
   getState: () => InputState;
   destroy: () => void;
-} {
-  const TAP_MAX_MS = 180;
-  const TAP_MAX_MOVE = 18;
+  setTouchHold: (action: TouchHoldAction, pointerId: number, active: boolean) => void;
+  pressTouchAction: (action: TouchPressAction) => void;
+  releaseAllTouch: () => void;
+}
 
-  const state: InputState = {
+export function createInputManager(): InputManager {
+  const keyboardState: InputState = {
     accelerating: false,
     left: false,
     right: false,
@@ -32,52 +33,69 @@ export function createInputManager(options: InputManagerOptions = {}): {
     pump: false,
     mute: false,
   };
-  let touchJumpQueued = false;
-  let touchRestartQueued = false;
-  let touchStartAt = 0;
-  let touchStartX = 0;
-  let touchStartY = 0;
-  let touchMoved = false;
+  const queuedTouchState: Record<TouchPressAction, boolean> = {
+    jump: false,
+    restart: false,
+    focus: false,
+    usePatch: false,
+    pump: false,
+    mute: false,
+  };
+  const touchAccelerators = new Set<number>();
+
+  const releaseAllInput = () => {
+    keyboardState.accelerating = false;
+    keyboardState.left = false;
+    keyboardState.right = false;
+    keyboardState.jump = false;
+    keyboardState.restart = false;
+    keyboardState.focus = false;
+    keyboardState.usePatch = false;
+    keyboardState.pump = false;
+    keyboardState.mute = false;
+    touchAccelerators.clear();
+    clearQueuedTouchState();
+  };
 
   const onKeyDown = (e: KeyboardEvent) => {
     switch (e.key) {
       case "ArrowUp":
       case "w":
       case "W":
-        state.accelerating = true;
+        keyboardState.accelerating = true;
         break;
       case "ArrowLeft":
       case "a":
       case "A":
-        state.left = true;
+        keyboardState.left = true;
         break;
       case "ArrowRight":
       case "d":
       case "D":
-        state.right = true;
+        keyboardState.right = true;
         break;
       case " ":
-        state.jump = true;
+        keyboardState.jump = true;
         break;
       case "r":
       case "R":
-        state.restart = true;
+        keyboardState.restart = true;
         break;
       case "Shift":
-        state.focus = true;
+        keyboardState.focus = true;
         break;
       case "e":
       case "E":
-        state.usePatch = true;
+        keyboardState.usePatch = true;
         break;
       case "ArrowDown":
       case "s":
       case "S":
-        state.pump = true;
+        keyboardState.pump = true;
         break;
       case "m":
       case "M":
-        state.mute = true;
+        keyboardState.mute = true;
         break;
     }
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " ", "Shift"].includes(e.key)) {
@@ -90,127 +108,98 @@ export function createInputManager(options: InputManagerOptions = {}): {
       case "ArrowUp":
       case "w":
       case "W":
-        state.accelerating = false;
+        keyboardState.accelerating = false;
         break;
       case "ArrowLeft":
       case "a":
       case "A":
-        state.left = false;
+        keyboardState.left = false;
         break;
       case "ArrowRight":
       case "d":
       case "D":
-        state.right = false;
+        keyboardState.right = false;
         break;
       case " ":
-        state.jump = false;
+        keyboardState.jump = false;
         break;
       case "r":
       case "R":
-        state.restart = false;
+        keyboardState.restart = false;
         break;
       case "Shift":
-        state.focus = false;
+        keyboardState.focus = false;
         break;
       case "e":
       case "E":
-        state.usePatch = false;
+        keyboardState.usePatch = false;
         break;
       case "ArrowDown":
       case "s":
       case "S":
-        state.pump = false;
+        keyboardState.pump = false;
         break;
       case "m":
       case "M":
-        state.mute = false;
+        keyboardState.mute = false;
         break;
     }
-  };
-
-  const onTouchStart = (e: TouchEvent) => {
-    const touch = e.changedTouches[0];
-    if (!touch) return;
-    const point = mapTouchPoint(touch);
-
-    touchStartAt = performance.now();
-    touchStartX = point.x;
-    touchStartY = point.y;
-    touchMoved = false;
-    state.accelerating = true;
-    e.preventDefault();
-  };
-
-  const onTouchMove = (e: TouchEvent) => {
-    const touch = e.changedTouches[0];
-    if (!touch) return;
-    const point = mapTouchPoint(touch);
-
-    const dx = point.x - touchStartX;
-    const dy = point.y - touchStartY;
-    if (Math.hypot(dx, dy) > TAP_MAX_MOVE) {
-      touchMoved = true;
-    }
-    e.preventDefault();
-  };
-
-  const onTouchEnd = (e: TouchEvent) => {
-    const touchDuration = performance.now() - touchStartAt;
-    if (!touchMoved && touchDuration <= TAP_MAX_MS) {
-      touchJumpQueued = true;
-      touchRestartQueued = true;
-    }
-
-    if (e.touches.length === 0) {
-      state.accelerating = false;
-    }
-    e.preventDefault();
-  };
-
-  const onTouchCancel = (e: TouchEvent) => {
-    if (e.touches.length === 0) {
-      state.accelerating = false;
-    }
-    e.preventDefault();
-  };
-
-  const mapTouchPoint = (touch: Touch): { x: number; y: number } => {
-    return options.mapClientPoint?.(touch.clientX, touch.clientY) ?? {
-      x: touch.clientX,
-      y: touch.clientY,
-    };
   };
 
   // Guard: window may not exist during SSR
   if (typeof window !== "undefined") {
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
-    window.addEventListener("touchstart", onTouchStart, { passive: false });
-    window.addEventListener("touchmove", onTouchMove, { passive: false });
-    window.addEventListener("touchend", onTouchEnd, { passive: false });
-    window.addEventListener("touchcancel", onTouchCancel, { passive: false });
+    window.addEventListener("blur", releaseAllInput);
   }
 
   return {
     getState: () => {
       const next = {
-        ...state,
-        jump: state.jump || touchJumpQueued,
-        restart: state.restart || touchRestartQueued,
+        accelerating: keyboardState.accelerating || touchAccelerators.size > 0,
+        left: keyboardState.left,
+        right: keyboardState.right,
+        jump: keyboardState.jump || queuedTouchState.jump,
+        restart: keyboardState.restart || queuedTouchState.restart,
+        focus: keyboardState.focus || queuedTouchState.focus,
+        usePatch: keyboardState.usePatch || queuedTouchState.usePatch,
+        pump: keyboardState.pump || queuedTouchState.pump,
+        mute: keyboardState.mute || queuedTouchState.mute,
       };
-      touchJumpQueued = false;
-      touchRestartQueued = false;
+      clearQueuedTouchState();
       return next;
     },
     destroy: () => {
       if (typeof window !== "undefined") {
         window.removeEventListener("keydown", onKeyDown);
         window.removeEventListener("keyup", onKeyUp);
-        window.removeEventListener("touchstart", onTouchStart);
-        window.removeEventListener("touchmove", onTouchMove);
-        window.removeEventListener("touchend", onTouchEnd);
-        window.removeEventListener("touchcancel", onTouchCancel);
+        window.removeEventListener("blur", releaseAllInput);
+      }
+      releaseAllInput();
+    },
+    setTouchHold: (action, pointerId, active) => {
+      if (action !== "accelerating") return;
+      if (active) {
+        touchAccelerators.add(pointerId);
+      } else {
+        touchAccelerators.delete(pointerId);
       }
     },
+    pressTouchAction: (action) => {
+      queuedTouchState[action] = true;
+    },
+    releaseAllTouch: () => {
+      touchAccelerators.clear();
+      clearQueuedTouchState();
+    },
   };
+
+  function clearQueuedTouchState(): void {
+    queuedTouchState.jump = false;
+    queuedTouchState.restart = false;
+    queuedTouchState.focus = false;
+    queuedTouchState.usePatch = false;
+    queuedTouchState.pump = false;
+    queuedTouchState.mute = false;
+  }
 }
