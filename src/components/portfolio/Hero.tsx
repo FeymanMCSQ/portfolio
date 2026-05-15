@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { hero } from "@/content/portfolioContent";
+import { hero, contact } from "@/content/portfolioContent";
 import s from "./Hero.module.css";
 
 export function Hero() {
@@ -21,9 +21,11 @@ export function Hero() {
             Play Runtime Rush ↗
           </Link>
           <a
-            href="#"
+            href={contact.resume}
             className={s.ctaTertiary}
-            aria-label="Download resume (link coming soon)"
+            target="_blank"
+            rel="noopener noreferrer"
+            download
           >
             Download Resume ↓
           </a>

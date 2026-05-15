@@ -29,44 +29,29 @@
   align-items: start;
 }
 
-/* Preview placeholder */
+/* Screenshot preview */
 .preview {
-  background: var(--surface);
   border: 1.5px solid rgba(79, 70, 229, 0.25);
   border-radius: 12px;
   aspect-ratio: 16 / 10;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.875rem;
   position: relative;
   overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
-.previewGlow {
+.previewOverlay {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.04) 0%, transparent 70%);
+  background: linear-gradient(to top, rgba(9, 9, 15, 0.55) 0%, transparent 55%);
   pointer-events: none;
 }
 
-.previewIcon {
-  font-size: 2rem;
-  color: var(--indigo);
-  opacity: 0.45;
-}
-
-.previewNote {
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  color: var(--text-3);
-  font-family: "Courier New", Courier, monospace;
-  text-align: center;
-  padding: 0 1rem;
-}
-
 .previewCta {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 1.25rem;
   font-size: 0.825rem;
   font-weight: 700;
   color: #fff;
@@ -80,7 +65,7 @@
 
 .previewCta:hover {
   background: var(--indigo-hover);
-  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
   color: #fff;
 }
 
