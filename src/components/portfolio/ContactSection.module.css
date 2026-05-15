@@ -35,29 +35,30 @@
   gap: 0.5rem;
   font-size: 0.875rem;
   color: var(--text-2);
-  background: var(--surface);
+  background: var(--surface-raised);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   padding: 0.65rem 1.25rem;
   text-decoration: none;
-  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  transition: border-color 0.15s, color 0.15s, box-shadow 0.15s;
 }
 
 .link:hover {
-  border-color: var(--border-accent);
-  color: var(--text);
-  background: var(--surface-raised);
+  border-color: rgba(79, 70, 229, 0.3);
+  color: var(--indigo);
+  box-shadow: 0 3px 10px rgba(79, 70, 229, 0.08);
 }
 
 .linkIcon {
   font-size: 0.85rem;
   color: var(--text-3);
+  font-family: "Courier New", Courier, monospace;
 }
 
 .emailMain {
   font-size: 1.05rem;
   font-weight: 600;
-  color: var(--cyan);
+  color: var(--indigo);
   text-decoration: none;
   font-family: "Courier New", Courier, monospace;
   letter-spacing: 0.04em;
@@ -65,5 +66,5 @@
 }
 
 .emailMain:hover {
-  opacity: 0.75;
+  opacity: 0.7;
 }

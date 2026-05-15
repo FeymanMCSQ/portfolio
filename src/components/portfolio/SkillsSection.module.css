@@ -16,22 +16,23 @@
 }
 
 .card {
-  background: var(--bg);
+  background: var(--surface-raised);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 1.25rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .card:hover {
-  border-color: rgba(155, 141, 204, 0.25);
+  border-color: rgba(79, 70, 229, 0.28);
+  box-shadow: 0 4px 16px rgba(79, 70, 229, 0.06);
 }
 
 .cardLabel {
   display: block;
   font-size: 0.68rem;
   letter-spacing: 0.14em;
-  color: var(--lavender);
+  color: var(--indigo);
   font-family: "Courier New", Courier, monospace;
   text-transform: uppercase;
   margin-bottom: 0.5rem;
@@ -55,7 +56,7 @@
   color: var(--text-2);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 4px;
   padding: 0.2rem 0.55rem;
   font-family: "Courier New", Courier, monospace;
   letter-spacing: 0.02em;

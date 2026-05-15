@@ -152,7 +152,8 @@ const CAMERA_GROUND_Y = GAME_CONFIG.terrain.groundY;
 
 export function renderFrame(
   ctx: CanvasRenderingContext2D,
-  state: GameState
+  state: GameState,
+  options: RenderFrameOptions = {}
 ): void {
   const dt = Math.max(0, Math.min(state.timeElapsed - _prevTimeElapsed, 0.05));
   _prevTimeElapsed = state.timeElapsed;
@@ -243,13 +244,18 @@ export function renderFrame(
   ctx.restore();
 
   drawHUD(ctx, state);
-  drawGeneratorDebug(ctx, state);
+  drawGeneratorDebug(ctx, state, options.showDebugOverlay ?? true);
   drawRouteFeedback(ctx, state);
   drawNearMissPopup(ctx, state);
-  drawControlsHint(ctx, state);
+  drawControlsHint(ctx, state, options.showControlsHint ?? true);
   drawOverclockFlash(ctx, state);
   drawScoreSurgeFlash(ctx, state);
   if (state.phase === "gameOver") drawGameOverOverlay(ctx, state);
+}
+
+export interface RenderFrameOptions {
+  showDebugOverlay?: boolean;
+  showControlsHint?: boolean;
 }
 
 // ─── Background ──────────────────────────────────────────────────────────────
@@ -1241,8 +1247,12 @@ function drawRouteFeedback(ctx: CanvasRenderingContext2D, state: GameState): voi
   ctx.restore();
 }
 
-function drawGeneratorDebug(ctx: CanvasRenderingContext2D, state: GameState): void {
-  if (!GN.debugOverlay) return;
+function drawGeneratorDebug(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  visible: boolean
+): void {
+  if (!visible || !GN.debugOverlay) return;
 
   const debug = state.terrainGenerator;
   const recent = debug.recentPatternIds.length > 0
@@ -1293,8 +1303,10 @@ function trimDebugLine(text: string, maxChars: number): string {
 
 function drawControlsHint(
   ctx: CanvasRenderingContext2D,
-  state: GameState
+  state: GameState,
+  visible: boolean
 ): void {
+  if (!visible) return;
   if (state.timeElapsed > 6) return;
 
   const alpha = Math.max(0, 1 - state.timeElapsed / 5);

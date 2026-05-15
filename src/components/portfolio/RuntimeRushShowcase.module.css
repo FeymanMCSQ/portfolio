@@ -1,7 +1,7 @@
 .section {
   padding: 5rem 0;
   background:
-    radial-gradient(ellipse at 50% 0%, rgba(64, 200, 176, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.05) 0%, transparent 55%),
     var(--bg);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -29,11 +29,11 @@
   align-items: start;
 }
 
-/* Preview / screenshot placeholder */
+/* Preview placeholder */
 .preview {
   background: var(--surface);
-  border: 1px solid var(--border-accent);
-  border-radius: 10px;
+  border: 1.5px solid rgba(79, 70, 229, 0.25);
+  border-radius: 12px;
   aspect-ratio: 16 / 10;
   display: flex;
   flex-direction: column;
@@ -47,22 +47,21 @@
 .previewGlow {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 50%, rgba(64, 200, 176, 0.04) 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 50%, rgba(99, 102, 241, 0.04) 0%, transparent 70%);
   pointer-events: none;
 }
 
 .previewIcon {
-  font-size: 2.25rem;
-  color: var(--cyan);
-  opacity: 0.5;
+  font-size: 2rem;
+  color: var(--indigo);
+  opacity: 0.45;
 }
 
 .previewNote {
   font-size: 0.72rem;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   color: var(--text-3);
   font-family: "Courier New", Courier, monospace;
-  text-transform: uppercase;
   text-align: center;
   padding: 0 1rem;
 }
@@ -70,22 +69,22 @@
 .previewCta {
   font-size: 0.825rem;
   font-weight: 700;
-  color: var(--bg);
-  background: var(--cyan);
-  border-radius: 4px;
+  color: #fff;
+  background: var(--indigo);
+  border-radius: 6px;
   padding: 0.5rem 1.25rem;
   text-decoration: none;
-  letter-spacing: 0.03em;
-  transition: opacity 0.15s, box-shadow 0.2s;
+  letter-spacing: 0.02em;
+  transition: background 0.15s, box-shadow 0.2s;
 }
 
 .previewCta:hover {
-  opacity: 0.88;
-  box-shadow: 0 0 20px rgba(64, 200, 176, 0.4);
-  color: var(--bg);
+  background: var(--indigo-hover);
+  box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28);
+  color: #fff;
 }
 
-/* Right column: details */
+/* Right column */
 .details {
   display: flex;
   flex-direction: column;
@@ -106,7 +105,7 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.55rem;
 }
 
 .bullet {
@@ -121,7 +120,8 @@
   content: "▹";
   position: absolute;
   left: 0;
-  color: var(--cyan);
+  color: var(--indigo);
+  opacity: 0.65;
   font-size: 0.72rem;
   top: 4px;
 }
@@ -135,35 +135,35 @@
 .btnPrimary {
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--bg);
-  background: var(--cyan);
-  border-radius: 6px;
+  color: #fff;
+  background: var(--indigo);
+  border-radius: 8px;
   padding: 0.7rem 1.5rem;
   text-decoration: none;
   letter-spacing: 0.02em;
-  transition: opacity 0.15s, box-shadow 0.2s;
+  transition: background 0.15s, box-shadow 0.2s;
 }
 
 .btnPrimary:hover {
-  opacity: 0.88;
-  box-shadow: 0 0 22px rgba(64, 200, 176, 0.35);
-  color: var(--bg);
+  background: var(--indigo-hover);
+  box-shadow: 0 6px 18px rgba(79, 70, 229, 0.28);
+  color: #fff;
 }
 
 .btnSecondary {
   font-size: 0.9rem;
   color: var(--text-2);
   background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
   padding: 0.7rem 1.5rem;
   text-decoration: none;
   transition: border-color 0.15s, color 0.15s;
 }
 
 .btnSecondary:hover {
-  border-color: var(--border-accent);
-  color: var(--text);
+  border-color: rgba(79, 70, 229, 0.35);
+  color: var(--indigo);
 }
 
 @media (max-width: 768px) {

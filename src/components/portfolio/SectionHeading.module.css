@@ -4,9 +4,9 @@
 
 .label {
   display: block;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   letter-spacing: 0.18em;
-  color: var(--cyan);
+  color: var(--indigo);
   font-family: "Courier New", Courier, monospace;
   text-transform: uppercase;
   margin-bottom: 0.6rem;

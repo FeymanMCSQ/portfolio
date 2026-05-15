@@ -89,16 +89,45 @@
 
 .touchHint {
   position: absolute;
-  bottom: clamp(76px, 14vmin, 118px);
+  bottom: clamp(96px, 16vmin, 138px);
   padding: 5px 8px;
-  border: 1px solid rgba(64, 200, 176, 0.24);
+  border: 1px solid rgba(64, 200, 176, 0.34);
   border-radius: 5px;
-  background: rgba(7, 13, 20, 0.36);
-  color: rgba(232, 234, 255, 0.55);
+  background: rgba(4, 10, 14, 0.56);
+  color: rgba(232, 250, 245, 0.68);
   font: 700 clamp(9px, 1.8vmin, 12px) "Courier New", Courier, monospace;
   letter-spacing: 0.08em;
   line-height: 1;
   animation: fadeTouchHint 7s ease forwards;
+}
+
+.controlDock {
+  position: absolute;
+  bottom: max(env(safe-area-inset-bottom), clamp(14px, 3.2vmin, 28px));
+  z-index: 3;
+  display: flex;
+  gap: clamp(8px, 1.8vmin, 14px);
+  align-items: center;
+  padding: clamp(8px, 1.8vmin, 14px);
+  border: 1px solid rgba(92, 245, 220, 0.62);
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, rgba(6, 17, 22, 0.9), rgba(3, 8, 13, 0.8));
+  box-shadow:
+    inset 0 0 0 1px rgba(235, 255, 250, 0.08),
+    0 12px 34px rgba(0, 0, 0, 0.42),
+    0 0 28px rgba(64, 220, 196, 0.2);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  pointer-events: none;
+}
+
+.leftControlDock {
+  left: max(env(safe-area-inset-left), clamp(16px, 3.6vmin, 34px));
+}
+
+.rightControlDock {
+  right: max(calc(env(safe-area-inset-right) + 58px), clamp(70px, 10vmin, 98px));
 }
 
 .leftTouchZone .touchHint {
@@ -110,22 +139,25 @@
 }
 
 .touchButton {
-  position: absolute;
+  position: relative;
   z-index: 2;
-  min-width: clamp(78px, 14vmin, 112px);
-  min-height: clamp(48px, 8.4vmin, 68px);
+  width: clamp(64px, 10vw, 88px);
+  min-width: clamp(64px, 10vw, 88px);
+  min-height: clamp(58px, 9vw, 78px);
   display: inline-grid;
   place-items: center;
   padding: 0 10px;
-  border: 1px solid rgba(64, 200, 176, 0.46);
+  border: 1px solid rgba(118, 255, 230, 0.72);
   border-radius: 8px;
   background:
-    linear-gradient(180deg, rgba(12, 24, 31, 0.74), rgba(7, 11, 18, 0.6));
+    radial-gradient(circle at 50% 15%, rgba(92, 245, 220, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(14, 32, 38, 0.96), rgba(5, 12, 18, 0.9));
   box-shadow:
-    inset 0 0 0 1px rgba(232, 234, 255, 0.07),
-    0 0 24px rgba(64, 200, 176, 0.14);
-  color: rgba(237, 242, 255, 0.88);
-  font: 800 clamp(11px, 2.2vmin, 15px) "Courier New", Courier, monospace;
+    inset 0 0 0 1px rgba(235, 255, 250, 0.12),
+    0 4px 14px rgba(0, 0, 0, 0.35),
+    0 0 18px rgba(92, 245, 220, 0.18);
+  color: rgba(248, 253, 255, 0.96);
+  font: 900 clamp(12px, 2.1vmin, 16px) "Courier New", Courier, monospace;
   letter-spacing: 0.08em;
   line-height: 1;
   cursor: pointer;
@@ -137,19 +169,26 @@
 
 .touchButton:active,
 .touchButton[data-active="true"] {
-  border-color: rgba(255, 222, 92, 0.8);
+  border-color: rgba(255, 222, 92, 0.95);
   background:
-    linear-gradient(180deg, rgba(48, 52, 34, 0.84), rgba(15, 18, 19, 0.7));
+    radial-gradient(circle at 50% 18%, rgba(255, 222, 92, 0.26), transparent 58%),
+    linear-gradient(180deg, rgba(58, 58, 32, 0.98), rgba(12, 17, 18, 0.92));
   box-shadow:
-    inset 0 0 0 1px rgba(255, 222, 92, 0.24),
-    0 0 28px rgba(255, 222, 92, 0.22);
+    inset 0 0 0 1px rgba(255, 242, 160, 0.28),
+    0 0 30px rgba(255, 222, 92, 0.34);
 }
 
 .touchButton:disabled {
   cursor: default;
-  opacity: 0.36;
-  filter: saturate(0.55);
-  box-shadow: none;
+  opacity: 0.52;
+  border-color: rgba(180, 205, 215, 0.34);
+  background:
+    linear-gradient(180deg, rgba(20, 27, 32, 0.86), rgba(7, 11, 16, 0.78));
+  color: rgba(210, 224, 226, 0.54);
+  filter: saturate(0.65);
+  box-shadow:
+    inset 0 0 0 1px rgba(235, 255, 250, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.24);
 }
 
 .touchButtonMeta {
@@ -158,22 +197,9 @@
   font-size: 0.72em;
 }
 
-.focusButton {
-  left: clamp(16px, 3.4vmin, 30px);
-  bottom: clamp(16px, 3.4vmin, 30px);
-}
-
 .pumpButton {
-  left: clamp(16px, 3.4vmin, 30px);
-  bottom: clamp(74px, 13.6vmin, 104px);
-  min-width: clamp(66px, 11.5vmin, 92px);
-  min-height: clamp(42px, 7.4vmin, 58px);
-  font-size: clamp(10px, 2vmin, 13px);
-}
-
-.patchButton {
-  right: clamp(76px, 11vmin, 104px);
-  bottom: clamp(16px, 3.4vmin, 30px);
+  width: clamp(58px, 8.5vw, 78px);
+  min-width: clamp(58px, 8.5vw, 78px);
 }
 
 .frameActions {
@@ -284,12 +310,24 @@
     font-size: 10px;
   }
 
-  .touchHint {
-    bottom: clamp(62px, 12vmin, 88px);
+  .controlDock {
+    padding: 7px;
+    gap: 7px;
+  }
+
+  .touchButton {
+    width: clamp(58px, 12vmin, 74px);
+    min-width: clamp(58px, 12vmin, 74px);
+    min-height: clamp(48px, 10vmin, 60px);
   }
 
   .pumpButton {
-    bottom: clamp(62px, 12vmin, 86px);
+    width: clamp(52px, 10vmin, 66px);
+    min-width: clamp(52px, 10vmin, 66px);
+  }
+
+  .touchHint {
+    bottom: clamp(80px, 17vmin, 102px);
   }
 }
 

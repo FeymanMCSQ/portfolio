@@ -26,17 +26,20 @@ export default function GameCanvas() {
   const frameRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<InputManager | null>(null);
+  const mobileControlsVisibleRef = useRef(false);
   const [portraitBlocked, setPortraitBlocked] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [controlStatus, setControlStatus] = useState<GameControlStatus>(
     DEFAULT_CONTROL_STATUS
   );
 
-  const updatePortraitState = useCallback(() => {
+  const updateViewportMode = useCallback(() => {
     const viewport = getViewportSize();
     setPortraitBlocked(
       viewport.width < viewport.height && viewport.width < PORTRAIT_BLOCK_WIDTH
     );
+    mobileControlsVisibleRef.current =
+      viewport.width > viewport.height && isCoarseTouchPointer();
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -83,17 +86,17 @@ export default function GameCanvas() {
   );
 
   useEffect(() => {
-    updatePortraitState();
-    window.addEventListener("resize", updatePortraitState);
-    window.addEventListener("orientationchange", updatePortraitState);
-    window.visualViewport?.addEventListener("resize", updatePortraitState);
+    updateViewportMode();
+    window.addEventListener("resize", updateViewportMode);
+    window.addEventListener("orientationchange", updateViewportMode);
+    window.visualViewport?.addEventListener("resize", updateViewportMode);
 
     return () => {
-      window.removeEventListener("resize", updatePortraitState);
-      window.removeEventListener("orientationchange", updatePortraitState);
-      window.visualViewport?.removeEventListener("resize", updatePortraitState);
+      window.removeEventListener("resize", updateViewportMode);
+      window.removeEventListener("orientationchange", updateViewportMode);
+      window.visualViewport?.removeEventListener("resize", updateViewportMode);
     };
-  }, [updatePortraitState]);
+  }, [updateViewportMode]);
 
   useEffect(() => {
     const updateFullscreen = () => {
@@ -150,7 +153,12 @@ export default function GameCanvas() {
 
     initializeAudio();
     const input = createInputManager();
-    const loop = createGameLoop(canvas, input.getState);
+    const loop = createGameLoop(canvas, input.getState, {
+      getRenderOptions: () => ({
+        showDebugOverlay: !mobileControlsVisibleRef.current,
+        showControlsHint: !mobileControlsVisibleRef.current,
+      }),
+    });
     inputRef.current = input;
 
     const syncControlStatus = () => {
@@ -227,38 +235,42 @@ export default function GameCanvas() {
           >
             <span className={styles.touchHint}>TAP = JUMP</span>
           </button>
-          <button
-            type="button"
-            className={`${styles.touchButton} ${styles.focusButton}`}
-            disabled={!controlStatus.focusAvailable}
-            data-active={controlStatus.focusActive ? "true" : undefined}
-            onPointerDown={(event) =>
-              pressTouchAction(event, "focus", controlStatus.focusAvailable)
-            }
-          >
-            FOCUS
-          </button>
-          <button
-            type="button"
-            className={`${styles.touchButton} ${styles.pumpButton}`}
-            disabled={!controlStatus.pumpAvailable}
-            onPointerDown={(event) =>
-              pressTouchAction(event, "pump", controlStatus.pumpAvailable)
-            }
-          >
-            PUMP
-          </button>
-          <button
-            type="button"
-            className={`${styles.touchButton} ${styles.patchButton}`}
-            disabled={!controlStatus.patchAvailable}
-            onPointerDown={(event) =>
-              pressTouchAction(event, "usePatch", controlStatus.patchAvailable)
-            }
-          >
-            PATCH
-            <span className={styles.touchButtonMeta}>x{controlStatus.patchCount}</span>
-          </button>
+          <div className={`${styles.controlDock} ${styles.leftControlDock}`}>
+            <button
+              type="button"
+              className={styles.touchButton}
+              disabled={!controlStatus.focusAvailable}
+              data-active={controlStatus.focusActive ? "true" : undefined}
+              onPointerDown={(event) =>
+                pressTouchAction(event, "focus", controlStatus.focusAvailable)
+              }
+            >
+              FOCUS
+            </button>
+            <button
+              type="button"
+              className={`${styles.touchButton} ${styles.pumpButton}`}
+              disabled={!controlStatus.pumpAvailable}
+              onPointerDown={(event) =>
+                pressTouchAction(event, "pump", controlStatus.pumpAvailable)
+              }
+            >
+              PUMP
+            </button>
+          </div>
+          <div className={`${styles.controlDock} ${styles.rightControlDock}`}>
+            <button
+              type="button"
+              className={styles.touchButton}
+              disabled={!controlStatus.patchAvailable}
+              onPointerDown={(event) =>
+                pressTouchAction(event, "usePatch", controlStatus.patchAvailable)
+              }
+            >
+              PATCH
+              <span className={styles.touchButtonMeta}>x{controlStatus.patchCount}</span>
+            </button>
+          </div>
         </div>
         <div className={styles.frameActions}>
           <button
@@ -281,6 +293,11 @@ function getViewportSize(): { width: number; height: number } {
     width: window.visualViewport?.width ?? window.innerWidth,
     height: window.visualViewport?.height ?? window.innerHeight,
   };
+}
+
+function isCoarseTouchPointer(): boolean {
+  if (typeof window === "undefined" || !window.matchMedia) return false;
+  return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 }
 
 function controlStatusEqual(

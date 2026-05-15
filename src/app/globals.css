@@ -12,34 +12,39 @@ html {
 
 html,
 body {
-  background: #050508;
-  color: #e0e0f0;
+  background: #f9f8ff;
+  color: #1e1b4b;
   font-family: "Courier New", Courier, monospace;
   height: 100%;
 }
 
 a {
-  color: #5577ff;
+  color: #4f46e5;
   text-decoration: none;
 }
 
 a:hover {
-  color: #88aaff;
+  color: #4338ca;
 }
 
-/* Portfolio design tokens — available to all CSS modules via var() */
+:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+/* Portfolio design tokens */
 :root {
-  --bg: #09090f;
-  --surface: #0f1220;
-  --surface-raised: #141828;
-  --border: rgba(136, 152, 204, 0.12);
-  --border-accent: rgba(64, 200, 176, 0.25);
-  --text: #e8eaff;
-  --text-2: #8898cc;
-  --text-3: #4a5470;
-  --cyan: #40c8b0;
-  --lavender: #9b8dcc;
-  --coral: #d4826a;
+  --bg: #f9f8ff;
+  --surface: #eeeafc;
+  --surface-raised: #ffffff;
+  --border: rgba(99, 102, 241, 0.14);
+  --border-accent: rgba(79, 70, 229, 0.35);
+  --text: #1e1b4b;
+  --text-2: #4a4780;
+  --text-3: #8b87b8;
+  --indigo: #4f46e5;
+  --indigo-hover: #4338ca;
   --max-w: 1100px;
   --pad: clamp(1rem, 4vw, 1.5rem);
 }

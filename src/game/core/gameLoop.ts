@@ -10,7 +10,7 @@ import { updateRewards } from "../systems/rewardSystem";
 import { queueAudioEvent } from "../audio/audioEvents";
 import { shutdownAudio, updateAudioSystem } from "../audio/audioSystem";
 import { recordRunProgress } from "../systems/progressStorage";
-import { renderFrame } from "../rendering/renderer";
+import { renderFrame, type RenderFrameOptions } from "../rendering/renderer";
 import { createInitialGameState } from "./gameState";
 import { GAME_CONFIG } from "../config/gameConfig";
 import type { InputState } from "../systems/inputManager";
@@ -22,7 +22,8 @@ const CV = GAME_CONFIG.canvas;
 
 export function createGameLoop(
   canvas: HTMLCanvasElement,
-  getInput: () => InputState
+  getInput: () => InputState,
+  options: GameLoopOptions = {}
 ): {
   start: () => void;
   stop: () => void;
@@ -98,7 +99,7 @@ export function createGameLoop(
     const ctx = canvas.getContext("2d");
     if (ctx) {
       prepareRenderContext(ctx, canvas);
-      renderFrame(ctx, state);
+      renderFrame(ctx, state, options.getRenderOptions?.());
     }
 
     rafId = requestAnimationFrame(tick);
@@ -140,6 +141,10 @@ export interface GameControlStatus {
   patchAvailable: boolean;
   patchCount: number;
   pumpAvailable: boolean;
+}
+
+export interface GameLoopOptions {
+  getRenderOptions?: () => RenderFrameOptions;
 }
 
 function prepareRenderContext(
