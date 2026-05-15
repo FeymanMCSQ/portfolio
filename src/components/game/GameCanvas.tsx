@@ -5,7 +5,7 @@ import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createInputManager, type InputManager, type TouchPressAction } from "@/game/systems/inputManager";
 import { createGameLoop, type GameControlStatus } from "@/game/core/gameLoop";
-import { initializeAudio } from "@/game/audio/audioSystem";
+import { initializeAudio, unlockAudio } from "@/game/audio/audioSystem";
 import AdminPanel from "./AdminPanel";
 import styles from "./GameCanvas.module.css";
 
@@ -18,6 +18,7 @@ const DEFAULT_CONTROL_STATUS: GameControlStatus = {
   focusActive: false,
   patchAvailable: false,
   patchCount: 0,
+  audioMuted: false,
   pumpAvailable: false,
 };
 
@@ -58,6 +59,7 @@ export default function GameCanvas() {
     (event: ReactPointerEvent<HTMLElement>) => {
       event.preventDefault();
       event.currentTarget.setPointerCapture?.(event.pointerId);
+      unlockAudio();
       inputRef.current?.setTouchHold("accelerating", event.pointerId, true);
     },
     []
@@ -80,6 +82,7 @@ export default function GameCanvas() {
       event.preventDefault();
       event.stopPropagation();
       if (!enabled) return;
+      unlockAudio();
       inputRef.current?.pressTouchAction(action);
     },
     []
@@ -271,6 +274,14 @@ export default function GameCanvas() {
               <span className={styles.touchButtonMeta}>x{controlStatus.patchCount}</span>
             </button>
           </div>
+          <button
+            type="button"
+            className={`${styles.cornerTouchButton} ${styles.muteTouchButton}`}
+            onPointerDown={(event) => pressTouchAction(event, "mute")}
+            aria-label={controlStatus.audioMuted ? "Unmute sound" : "Mute sound"}
+          >
+            {controlStatus.audioMuted ? "UNMUTE" : "MUTE"}
+          </button>
         </div>
         <div className={styles.frameActions}>
           <button
@@ -310,6 +321,7 @@ function controlStatusEqual(
     a.focusActive === b.focusActive &&
     a.patchAvailable === b.patchAvailable &&
     a.patchCount === b.patchCount &&
+    a.audioMuted === b.audioMuted &&
     a.pumpAvailable === b.pumpAvailable
   );
 }

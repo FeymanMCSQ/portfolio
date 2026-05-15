@@ -291,7 +291,7 @@ const S = {
     display: "flex" as const,
     alignItems: "center" as const,
     justifyContent: "center" as const,
-    zIndex: 20,
+    zIndex: 40,
     lineHeight: "1" as const,
   },
   backdrop: {

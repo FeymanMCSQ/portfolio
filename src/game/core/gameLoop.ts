@@ -125,6 +125,7 @@ export function createGameLoop(
         focusActive: state.focusActive,
         patchAvailable: state.patchCount > 0,
         patchCount: state.patchCount,
+        audioMuted: state.audioMuted,
         pumpAvailable:
           state.phase === "playing" &&
           state.player.isGrounded &&
@@ -140,6 +141,7 @@ export interface GameControlStatus {
   focusActive: boolean;
   patchAvailable: boolean;
   patchCount: number;
+  audioMuted: boolean;
   pumpAvailable: boolean;
 }
 

@@ -16,6 +16,10 @@ export function initializeAudio(): void {
   audioManager.preloadAll();
 }
 
+export function unlockAudio(): void {
+  audioManager.unlock();
+}
+
 export function updateAudioSystem(
   state: GameState,
   input: InputState,
