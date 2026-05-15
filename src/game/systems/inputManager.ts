@@ -10,7 +10,11 @@ export interface InputState {
   mute: boolean;
 }
 
-export function createInputManager(): {
+interface InputManagerOptions {
+  mapClientPoint?: (clientX: number, clientY: number) => { x: number; y: number };
+}
+
+export function createInputManager(options: InputManagerOptions = {}): {
   getState: () => InputState;
   destroy: () => void;
 } {
@@ -127,10 +131,11 @@ export function createInputManager(): {
   const onTouchStart = (e: TouchEvent) => {
     const touch = e.changedTouches[0];
     if (!touch) return;
+    const point = mapTouchPoint(touch);
 
     touchStartAt = performance.now();
-    touchStartX = touch.clientX;
-    touchStartY = touch.clientY;
+    touchStartX = point.x;
+    touchStartY = point.y;
     touchMoved = false;
     state.accelerating = true;
     e.preventDefault();
@@ -139,9 +144,10 @@ export function createInputManager(): {
   const onTouchMove = (e: TouchEvent) => {
     const touch = e.changedTouches[0];
     if (!touch) return;
+    const point = mapTouchPoint(touch);
 
-    const dx = touch.clientX - touchStartX;
-    const dy = touch.clientY - touchStartY;
+    const dx = point.x - touchStartX;
+    const dy = point.y - touchStartY;
     if (Math.hypot(dx, dy) > TAP_MAX_MOVE) {
       touchMoved = true;
     }
@@ -166,6 +172,13 @@ export function createInputManager(): {
       state.accelerating = false;
     }
     e.preventDefault();
+  };
+
+  const mapTouchPoint = (touch: Touch): { x: number; y: number } => {
+    return options.mapClientPoint?.(touch.clientX, touch.clientY) ?? {
+      x: touch.clientX,
+      y: touch.clientY,
+    };
   };
 
   // Guard: window may not exist during SSR

@@ -4,7 +4,7 @@
 
 ## Active quest
 
-None. Pattern-based terrain validation just completed.
+None. Responsive play layout just completed.
 
 ## What exists and works
 
@@ -94,13 +94,22 @@ None. Pattern-based terrain validation just completed.
 - `main_gameplay_loop.mp3` fades in during play, fades out on game over, pauses when the page is hidden, and ducks under major SFX
 - Jump, landing/hard landing, pump/perfect pump, Overclock, Score Surge, Patch Pulse, ring pass, scenery shift, fall, crash, game over, and high-score sounds are wired
 
+### Responsive play layout (done)
+- `/play` uses a full-viewport `100dvh` shell with Techno-Oasis letterboxing/background treatment
+- The game frame preserves a 16:9 display aspect and scales to the largest size that fits the viewport
+- Canvas rendering keeps stable virtual game coordinates while the backing store resizes for device pixel ratio
+- Touch coordinate mapping converts client positions back into virtual game coordinates for consistent tap/drag thresholds
+- Mobile portrait below the supported width shows a rotate-device prompt with a back-to-portfolio link instead of a tiny strip
+- Mobile landscape and desktop fill most of the available viewport
+- A lightweight fullscreen button requests/exits fullscreen on the game shell without touching gameplay state
+
 ## Architecture snapshot
 
 - **Stack**: Next.js 16, TypeScript 6, React 19, raw Canvas API (no game framework)
 - **Game loop**: `createGameLoop(canvas, getInput)` — owns state, RAF-driven, `MAX_DELTA=0.05`
 - **No React state in game loop**: `GameState` is a plain mutable object
 - **Physics**: all delta-time multiplied; friction uses `Math.pow(friction, dt*60)`
-- **Canvas**: 900×500px, player fixed at X=210, world scrolls left
+- **Canvas**: stable 900×500 virtual game coordinates, displayed in a responsive 16:9 frame with DPR-aware backing-store scaling
 - **Terrain**: piecewise linear side-view route-pattern segments in world coordinates; player samples terrain at `worldOffset + player.x`
 - **Old lane steering removed for Phase A**: A/D no longer moves the player vertically
 

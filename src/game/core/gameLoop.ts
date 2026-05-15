@@ -17,6 +17,7 @@ import type { InputState } from "../systems/inputManager";
 
 const MAX_DELTA = 0.05;
 const SCENERY_SCORE_TIER = 20000;
+const CV = GAME_CONFIG.canvas;
 
 export function createGameLoop(
   canvas: HTMLCanvasElement,
@@ -90,7 +91,10 @@ export function createGameLoop(
     updateAudioSystem(state, input, dt, mutePressed);
 
     const ctx = canvas.getContext("2d");
-    if (ctx) renderFrame(ctx, state);
+    if (ctx) {
+      prepareRenderContext(ctx, canvas);
+      renderFrame(ctx, state);
+    }
 
     rafId = requestAnimationFrame(tick);
   }
@@ -107,4 +111,18 @@ export function createGameLoop(
       shutdownAudio();
     },
   };
+}
+
+function prepareRenderContext(
+  ctx: CanvasRenderingContext2D,
+  canvas: HTMLCanvasElement
+): void {
+  const scale = Math.min(canvas.width / CV.width, canvas.height / CV.height);
+  const offsetX = (canvas.width - CV.width * scale) / 2;
+  const offsetY = (canvas.height - CV.height * scale) / 2;
+
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.imageSmoothingEnabled = true;
+  ctx.setTransform(scale, 0, 0, scale, offsetX, offsetY);
 }
