@@ -10,7 +10,7 @@ export function ProjectsSection() {
         <SectionHeading
           label="Work"
           title="Featured Projects"
-          subtitle="[TODO: One-line section subtitle — e.g. 'Things I've built and shipped']"
+          subtitle="Selected work across full-stack development, interactive systems, AI/data, and systems programming."
         />
         <div className={s.grid}>
           {projects.map((p) => (

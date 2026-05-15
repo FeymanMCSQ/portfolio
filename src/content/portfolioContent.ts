@@ -1,5 +1,4 @@
 // Central content file — all portfolio text lives here.
-// Replace remaining [TODO] items with real content when ready.
 
 export const hero = {
   name: "Safi Ullah",
@@ -46,8 +45,8 @@ export const projects: Project[] = [
       "Shipped responsive desktop and mobile gameplay with landscape controls, audio feedback, and Techno-Oasis art direction",
     ],
     liveUrl: "/play",
-    githubUrl: "#", // TODO: replace with real GitHub URL
-    caseStudyUrl: "#", // TODO: replace with real case study URL
+    githubUrl: null,
+    caseStudyUrl: null,
   },
   {
     id: "atlas",

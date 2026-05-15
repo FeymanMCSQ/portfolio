@@ -9,7 +9,7 @@ export function SkillsSection() {
         <SectionHeading
           label="Stack"
           title="Skills & Technologies"
-          subtitle="[TODO: Short section subtitle — e.g. 'What I reach for and why']"
+          subtitle="Technologies I use to build full-stack products, interactive systems, AI/data workflows, and lower-level CS projects."
         />
         <div className={s.grid}>
           {skillCategories.map((cat) => (
