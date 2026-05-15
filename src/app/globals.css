@@ -6,6 +6,10 @@
   padding: 0;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 html,
 body {
   background: #050508;
@@ -21,4 +25,31 @@ a {
 
 a:hover {
   color: #88aaff;
+}
+
+/* Portfolio design tokens — available to all CSS modules via var() */
+:root {
+  --bg: #09090f;
+  --surface: #0f1220;
+  --surface-raised: #141828;
+  --border: rgba(136, 152, 204, 0.12);
+  --border-accent: rgba(64, 200, 176, 0.25);
+  --text: #e8eaff;
+  --text-2: #8898cc;
+  --text-3: #4a5470;
+  --cyan: #40c8b0;
+  --lavender: #9b8dcc;
+  --coral: #d4826a;
+  --max-w: 1100px;
+  --pad: clamp(1rem, 4vw, 1.5rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

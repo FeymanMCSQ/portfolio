@@ -4,7 +4,7 @@
 
 ## Active quest
 
-None. Quest 12 (sound effects and gameplay music) just completed.
+None. Pattern-based terrain validation just completed.
 
 ## What exists and works
 
@@ -62,9 +62,19 @@ None. Quest 12 (sound effects and gameplay music) just completed.
 - Deeper lower branches include downhill speed, blocks, a gap, stronger passive score, and Score Surge placement
 - The default/safe route remains continuous and readable, with fewer forced hazards
 
+### Pattern validation generator (done)
+- Terrain generation is now selected from formal pattern metadata instead of a fixed pattern cycle
+- Supported patterns: safe flat, recovery, ramp reward arc, upper ledge, downhill pump, obstacle reward, ring gate
+- Each pattern declares difficulty, approximate length, entry-speed range, safe/risky path flags, required inputs, preferred next patterns, and validation data
+- Candidate patterns are selected deterministically from `generation.seed`, pattern index, and distance tier
+- Validation rejects sections with impossible safe gaps, unreachable risky gaps, too-short landings, blind landing obstacles, unreachable upper ledges, missing safe paths, or invalid difficulty rhythm
+- Hard patterns are gated until later tiers and are followed by easier/recovery candidates before more hard content can appear
+- If no candidate validates within the retry limit, generation falls back to safe flat or recovery
+- Debug overlay shows seed, current pattern, difficulty, score tier, sequence index, hard streak, recent history, and latest rejection/fallback reason
+
 ### Deterministic endless progress (Quest 09 — done)
 - Runs are endless: the old 60-second survival win condition and `"won"` phase were removed
-- Terrain generation uses the fixed segment pattern/index, so a block or gap at a given world position appears in the same place on replay unless the config/pattern changes
+- Terrain generation is deterministic from seed, pattern index, and distance tier, so replayed sections remain stable unless the config/pattern metadata changes
 - Overclock and Patch Pulse token spacing is deterministic instead of `Math.random()`-based
 - Local progress persists in `localStorage` under `runtimeRush.progress.v1`
 - Stored progress: last death distance, farthest distance, best score, and the distance reached during the best-score run
@@ -150,6 +160,7 @@ None. Quest 12 (sound effects and gameplay music) just completed.
   terrainSegments: TerrainSegment[]
   nextTerrainSegmentId: number
   terrainPatternIndex: number
+  terrainGenerator: TerrainGeneratorState
   nextObstacleId: number
   score: number
   multiplier: 1 | 2 | 3 | 4
@@ -198,7 +209,7 @@ None. Quest 12 (sound effects and gameplay music) just completed.
 
 ## Config sections in gameConfig.ts
 
-`player`, `terrain`, `routes`, `jump`, `world`, `patchPulse`, `focus`, `pump`, `overclock`, `scoreSurge`, `rewards`, `audio`, `scoring` — all mutable (no `as const`)
+`player`, `terrain`, `routes`, `jump`, `world`, `patchPulse`, `focus`, `pump`, `overclock`, `scoreSurge`, `rewards`, `generation`, `audio`, `scoring` — all mutable (no `as const`)
 
 ## Pending / not yet built
 

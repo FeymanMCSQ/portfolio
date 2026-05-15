@@ -120,6 +120,24 @@ export const GAME_CONFIG = {
     feedbackDuration: 1.1,
   },
 
+  generation: {
+    seed: "runtime-rush-v1",
+    scoreTierSize: 20000,
+    difficultyDistanceTierLength: 4200,
+    maxPatternSelectionAttempts: 8,
+    hardStreakLimit: 2,
+    debugOverlay: true,
+    debugHistorySize: 6,
+    reactionTimeSeconds: 0.2,
+    safeJumpSpeedRatio: 0.62,
+    riskJumpSpeedRatio: 0.9,
+    jumpSafetyMargin: 0.72,
+    rampSafetyMargin: 0.72,
+    upperLedgeReachSafety: 0.78,
+    minimumLandingWidth: 180,
+    blindLandingObstacleBuffer: 170,
+  },
+
   audio: {
     masterVolume: 1,
     sfxVolume: 1,

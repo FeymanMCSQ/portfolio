@@ -1,0 +1,161 @@
+.hero {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  align-items: center;
+  background:
+    radial-gradient(ellipse at 15% 20%, rgba(155, 141, 204, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 75%, rgba(64, 200, 176, 0.05) 0%, transparent 55%),
+    var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+
+.inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 5rem var(--pad);
+  width: 100%;
+}
+
+.eyebrow {
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  color: var(--cyan);
+  font-family: "Courier New", Courier, monospace;
+  margin-bottom: 1.25rem;
+  text-transform: uppercase;
+  display: block;
+}
+
+.name {
+  font-size: clamp(2.5rem, 7vw, 4.5rem);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.08;
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.03em;
+}
+
+.role {
+  font-size: clamp(1rem, 2.5vw, 1.3rem);
+  color: var(--text-2);
+  margin-bottom: 1.5rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.tagline {
+  font-size: 0.9rem;
+  color: var(--text-3);
+  max-width: 480px;
+  line-height: 1.65;
+  margin-bottom: 2.75rem;
+  font-family: "Courier New", Courier, monospace;
+  border-left: 2px solid var(--border-accent);
+  padding-left: 0.875rem;
+}
+
+.ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.ctaPrimary {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.925rem;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--cyan);
+  border-radius: 6px;
+  padding: 0.8rem 1.75rem;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+  transition: opacity 0.15s, box-shadow 0.2s;
+}
+
+.ctaPrimary:hover {
+  opacity: 0.88;
+  box-shadow: 0 0 28px rgba(64, 200, 176, 0.35);
+  color: var(--bg);
+}
+
+.ctaSecondary {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.925rem;
+  font-weight: 600;
+  color: var(--cyan);
+  background: transparent;
+  border: 1px solid var(--border-accent);
+  border-radius: 6px;
+  padding: 0.8rem 1.75rem;
+  text-decoration: none;
+  transition: background 0.15s, box-shadow 0.2s;
+}
+
+.ctaSecondary:hover {
+  background: rgba(64, 200, 176, 0.06);
+  box-shadow: 0 0 18px rgba(64, 200, 176, 0.12);
+  color: var(--cyan);
+}
+
+.ctaTertiary {
+  font-size: 0.85rem;
+  color: var(--text-3);
+  text-decoration: none;
+  padding: 0.8rem 0.5rem;
+  transition: color 0.15s;
+}
+
+.ctaTertiary:hover {
+  color: var(--text-2);
+}
+
+.scrollHint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.scrollLine {
+  width: 1px;
+  height: 40px;
+  background: linear-gradient(to bottom, rgba(64, 200, 176, 0.4), transparent);
+}
+
+.scrollLabel {
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--text-3);
+  font-family: "Courier New", Courier, monospace;
+  text-transform: uppercase;
+}
+
+@media (max-width: 640px) {
+  .inner {
+    padding: 3.5rem var(--pad) 4.5rem;
+  }
+
+  .ctas {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .scrollHint {
+    display: none;
+  }
+}
+
+@media (max-height: 650px) {
+  .scrollHint {
+    display: none;
+  }
+}

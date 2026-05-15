@@ -1,31 +1,26 @@
-import Link from "next/link";
+import { Navbar } from "@/components/portfolio/Navbar";
+import { Hero } from "@/components/portfolio/Hero";
+import { ProjectsSection } from "@/components/portfolio/ProjectsSection";
+import { SkillsSection } from "@/components/portfolio/SkillsSection";
+import { RuntimeRushShowcase } from "@/components/portfolio/RuntimeRushShowcase";
+import { AboutSection } from "@/components/portfolio/AboutSection";
+import { ContactSection } from "@/components/portfolio/ContactSection";
+import { Footer } from "@/components/portfolio/Footer";
+import s from "./page.module.css";
 
 export default function Home() {
   return (
-    <main
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        minHeight: "100vh",
-        gap: "1rem",
-      }}
-    >
-      <h1 style={{ fontSize: "2rem", color: "#5577ff", letterSpacing: "0.1em" }}>
-        RUNTIME RUSH
-      </h1>
-      <Link
-        href="/play"
-        style={{
-          fontSize: "1rem",
-          color: "#88aaff",
-          border: "1px solid #334",
-          padding: "0.5rem 1.5rem",
-        }}
-      >
-        → play
-      </Link>
-    </main>
+    <div className={s.portfolio}>
+      <Navbar />
+      <main id="main-content">
+        <Hero />
+        <ProjectsSection />
+        <SkillsSection />
+        <RuntimeRushShowcase />
+        <AboutSection />
+        <ContactSection />
+      </main>
+      <Footer />
+    </div>
   );
 }

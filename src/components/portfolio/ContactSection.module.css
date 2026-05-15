@@ -1,0 +1,69 @@
+.section {
+  padding: 5rem 0;
+  background: var(--bg);
+}
+
+.inner {
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 0 var(--pad);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cta {
+  font-size: 1rem;
+  color: var(--text-2);
+  max-width: 440px;
+  margin: 0 auto 2.5rem;
+  line-height: 1.65;
+  text-align: center;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  margin-bottom: 2.5rem;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-2);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.65rem 1.25rem;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.link:hover {
+  border-color: var(--border-accent);
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.linkIcon {
+  font-size: 0.85rem;
+  color: var(--text-3);
+}
+
+.emailMain {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--cyan);
+  text-decoration: none;
+  font-family: "Courier New", Courier, monospace;
+  letter-spacing: 0.04em;
+  transition: opacity 0.15s;
+}
+
+.emailMain:hover {
+  opacity: 0.75;
+}

@@ -14,6 +14,7 @@ const {
   routes: RC,
   rewards: RW,
   scoreSurge: SS,
+  generation: GN,
 } = GAME_CONFIG;
 const VIEW_TOP = 64;
 const VIEW_BOTTOM = CV.height - 34;
@@ -242,6 +243,7 @@ export function renderFrame(
   ctx.restore();
 
   drawHUD(ctx, state);
+  drawGeneratorDebug(ctx, state);
   drawRouteFeedback(ctx, state);
   drawNearMissPopup(ctx, state);
   drawControlsHint(ctx, state);
@@ -1237,6 +1239,53 @@ function drawRouteFeedback(ctx: CanvasRenderingContext2D, state: GameState): voi
   ctx.font = "bold 13px monospace";
   ctx.fillText(state.routeFeedbackText, CV.width / 2, popY);
   ctx.restore();
+}
+
+function drawGeneratorDebug(ctx: CanvasRenderingContext2D, state: GameState): void {
+  if (!GN.debugOverlay) return;
+
+  const debug = state.terrainGenerator;
+  const recent = debug.recentPatternIds.length > 0
+    ? debug.recentPatternIds.join(" > ")
+    : "none";
+  const rejected = debug.rejectedPatternReason || "none";
+  const lines = [
+    `GEN ${debug.seed}`,
+    `PATTERN ${debug.currentPatternId} (${debug.currentPatternDifficulty})`,
+    `SCORE TIER ${Math.floor(state.score / GN.scoreTierSize)}  SEQ ${state.terrainPatternIndex}`,
+    `HARD STREAK ${debug.hardStreak}`,
+    `RECENT ${recent}`,
+    `REJECT ${rejected}`,
+  ];
+
+  const x = 14;
+  const y = CV.height - 104;
+  const w = 390;
+  const h = 90;
+
+  ctx.save();
+  ctx.fillStyle = "rgba(14, 18, 30, 0.64)";
+  ctx.fillRect(x, y, w, h);
+  ctx.strokeStyle = "rgba(140, 170, 230, 0.28)";
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+  ctx.font = "9px monospace";
+  ctx.textAlign = "left";
+
+  for (let i = 0; i < lines.length; i += 1) {
+    ctx.fillStyle = i === 1
+      ? "rgba(255, 220, 110, 0.86)"
+      : i === 5 && rejected !== "none"
+      ? "rgba(255, 135, 105, 0.78)"
+      : "rgba(180, 205, 240, 0.72)";
+    ctx.fillText(trimDebugLine(lines[i], 62), x + 10, y + 15 + i * 13);
+  }
+
+  ctx.restore();
+}
+
+function trimDebugLine(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars - 3)}...`;
 }
 
 // ─── Controls hint ───────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { GAME_CONFIG } from "../config/gameConfig";
 import type {
   GameState,
   TerrainObstacle,
+  TerrainPatternDifficulty,
   TerrainRoute,
   TerrainSegment,
   TerrainSegmentType,
@@ -12,6 +13,9 @@ const CV = GAME_CONFIG.canvas;
 const T = GAME_CONFIG.terrain;
 const R = GAME_CONFIG.routes;
 const RW = GAME_CONFIG.rewards;
+const P = GAME_CONFIG.player;
+const J = GAME_CONFIG.jump;
+const G = GAME_CONFIG.generation;
 
 export interface TerrainSample {
   hasSurface: boolean;
@@ -36,9 +40,41 @@ interface TerrainSampleOptions {
   stickToRoute?: TerrainRoute | null;
 }
 
+interface RoutePatternValidation {
+  safeGaps?: number[];
+  riskGaps?: number[];
+  rampGaps?: number[];
+  upperLedgeHeight?: number;
+  minLandingWidth?: number;
+  firstObstacleAfterLanding?: number;
+}
+
 interface RoutePattern {
-  name: string;
+  id: string;
+  difficulty: TerrainPatternDifficulty;
+  length: number;
+  minEntrySpeed: number;
+  maxEntrySpeed: number;
+  hasSafePath: boolean;
+  hasRiskRewardPath: boolean;
+  requiresJump: boolean;
+  requiresPump: boolean;
+  requiresHighSpeed: boolean;
+  preferredNextPatterns?: string[];
+  validation?: RoutePatternValidation;
   build: (state: GameState, startX: number, startY: number) => TerrainSegment;
+}
+
+interface GeneratorContext {
+  tail: TerrainSegment;
+  scoreTier: number;
+  distanceTier: number;
+  difficultyTier: number;
+  estimatedEntrySpeed: number;
+  safeJumpDistance: number;
+  riskJumpDistance: number;
+  rampJumpDistance: number;
+  maxJumpHeight: number;
 }
 
 const TERRAIN_Y_MIN = 180;          // don't climb above background structures
@@ -49,14 +85,125 @@ const LOWER_RETURN_MIN_LENGTH = 320;
 const DEEP_RETURN_MIN_LENGTH = 480;
 
 const ROUTE_PATTERNS: RoutePattern[] = [
-  { name: "safe-flat", build: buildSafeFlatPattern },
-  { name: "upper-ledge", build: buildUpperLedgePattern },
-  { name: "recovery", build: buildRecoveryPattern },
-  { name: "ramp-arc", build: buildRampArcPattern },
-  { name: "red-drop", build: buildRedDropPattern },
-  { name: "recovery", build: buildRecoveryPattern },
-  { name: "obstacle-line", build: buildObstacleRewardPattern },
-  { name: "recovery", build: buildRecoveryPattern },
+  {
+    id: "safe-flat",
+    difficulty: "easy",
+    length: T.flatLength * 0.95,
+    minEntrySpeed: 0,
+    maxEntrySpeed: P.maxSpeed * 2,
+    hasSafePath: true,
+    hasRiskRewardPath: false,
+    requiresJump: false,
+    requiresPump: false,
+    requiresHighSpeed: false,
+    preferredNextPatterns: ["obstacle-reward", "ring-gate", "upper-ledge"],
+    build: buildSafeFlatPattern,
+  },
+  {
+    id: "recovery",
+    difficulty: "recovery",
+    length: T.flatLength * 0.85,
+    minEntrySpeed: 0,
+    maxEntrySpeed: P.maxSpeed * 2,
+    hasSafePath: true,
+    hasRiskRewardPath: false,
+    requiresJump: false,
+    requiresPump: false,
+    requiresHighSpeed: false,
+    preferredNextPatterns: ["safe-flat", "obstacle-reward", "ring-gate"],
+    build: buildRecoveryPattern,
+  },
+  {
+    id: "ramp-reward-arc",
+    difficulty: "hard",
+    length: 1205,
+    minEntrySpeed: 220,
+    maxEntrySpeed: P.maxSpeed * 2,
+    hasSafePath: true,
+    hasRiskRewardPath: true,
+    requiresJump: true,
+    requiresPump: false,
+    requiresHighSpeed: true,
+    preferredNextPatterns: ["recovery", "safe-flat"],
+    validation: {
+      rampGaps: [135],
+      minLandingWidth: 320,
+      firstObstacleAfterLanding: 198,
+    },
+    build: buildRampArcPattern,
+  },
+  {
+    id: "upper-ledge",
+    difficulty: "medium",
+    length: 1520,
+    minEntrySpeed: 180,
+    maxEntrySpeed: P.maxSpeed * 2,
+    hasSafePath: true,
+    hasRiskRewardPath: true,
+    requiresJump: true,
+    requiresPump: false,
+    requiresHighSpeed: false,
+    preferredNextPatterns: ["recovery", "downhill-pump", "safe-flat"],
+    validation: {
+      upperLedgeHeight: R.upperLedgeHeight,
+      minLandingWidth: 190,
+    },
+    build: buildUpperLedgePattern,
+  },
+  {
+    id: "downhill-pump",
+    difficulty: "hard",
+    length: 1200,
+    minEntrySpeed: 170,
+    maxEntrySpeed: P.maxSpeed * 2,
+    hasSafePath: true,
+    hasRiskRewardPath: true,
+    requiresJump: true,
+    requiresPump: true,
+    requiresHighSpeed: false,
+    preferredNextPatterns: ["recovery", "safe-flat"],
+    validation: {
+      riskGaps: [LOWER_RETURN_GAP, DEEP_RETURN_GAP],
+      minLandingWidth: 280,
+      firstObstacleAfterLanding: 255,
+    },
+    build: buildDownhillPumpPattern,
+  },
+  {
+    id: "obstacle-reward",
+    difficulty: "medium",
+    length: 1000,
+    minEntrySpeed: 120,
+    maxEntrySpeed: P.maxSpeed * 2,
+    hasSafePath: true,
+    hasRiskRewardPath: true,
+    requiresJump: true,
+    requiresPump: false,
+    requiresHighSpeed: false,
+    preferredNextPatterns: ["safe-flat", "recovery", "upper-ledge"],
+    validation: {
+      minLandingWidth: 260,
+      firstObstacleAfterLanding: 260,
+    },
+    build: buildObstacleRewardPattern,
+  },
+  {
+    id: "ring-gate",
+    difficulty: "medium",
+    length: 1180,
+    minEntrySpeed: 160,
+    maxEntrySpeed: P.maxSpeed * 2,
+    hasSafePath: true,
+    hasRiskRewardPath: true,
+    requiresJump: false,
+    requiresPump: false,
+    requiresHighSpeed: false,
+    preferredNextPatterns: ["safe-flat", "upper-ledge", "recovery"],
+    validation: {
+      minLandingWidth: 360,
+    },
+    build: buildRingGatePattern,
+  },
 ];
 
 export function updateTerrain(state: GameState): void {
@@ -77,9 +224,10 @@ export function ensureTerrainAhead(state: GameState): void {
   const targetX = state.worldOffset + CV.width + T.generateAhead;
 
   while (tail.endX < targetX) {
-    const pattern = ROUTE_PATTERNS[state.terrainPatternIndex % ROUTE_PATTERNS.length];
+    const pattern = selectRoutePattern(state, tail);
     state.terrainPatternIndex += 1;
     tail = pattern.build(state, tail.endX, tail.endY);
+    recordPatternPlacement(state, pattern);
   }
 }
 
@@ -206,6 +354,275 @@ export function surfaceYAtX(segment: TerrainSegment, x: number): number {
   return segment.startY + (segment.endY - segment.startY) * t;
 }
 
+// ─── Pattern selection and validation ───────────────────────────────────────
+
+function selectRoutePattern(state: GameState, tail: TerrainSegment): RoutePattern {
+  const context = buildGeneratorContext(state, tail);
+  const forcedRecovery = state.terrainGenerator.hardStreak >= G.hardStreakLimit;
+  const candidatePool = forcedRecovery
+    ? getPatternsById(["recovery", "safe-flat"])
+    : getCandidatePool(state, context);
+
+  const seedOffset = stableSeedHash(state.terrainGenerator.seed);
+  const preferredCandidateCount = forcedRecovery
+    ? candidatePool.length
+    : countPreferredCandidates(state, candidatePool);
+  const selectionRange = preferredCandidateCount > 0
+    ? preferredCandidateCount
+    : candidatePool.length;
+  const startIndex = candidatePool.length === 0
+    ? 0
+    : (state.terrainPatternIndex * 3 + context.distanceTier + seedOffset) % selectionRange;
+
+  let lastRejected = forcedRecovery
+    ? `forced recovery after ${state.terrainGenerator.hardStreak} hard patterns`
+    : "";
+
+  const attempts = Math.min(G.maxPatternSelectionAttempts, candidatePool.length);
+  for (let i = 0; i < attempts; i += 1) {
+    const pattern = candidatePool[(startIndex + i) % candidatePool.length];
+    const result = validatePatternPlacement(pattern, context, state);
+    if (result.valid) {
+      state.terrainGenerator.rejectedPatternReason = lastRejected;
+      state.terrainGenerator.currentScoreTier = context.scoreTier;
+      return pattern;
+    }
+    lastRejected = `${pattern.id}: ${result.reason}`;
+  }
+
+  const fallbackId = forcedRecovery ? "recovery" : "safe-flat";
+  state.terrainGenerator.rejectedPatternReason =
+    `fallback ${fallbackId}${lastRejected ? ` after ${lastRejected}` : ""}`;
+  state.terrainGenerator.currentScoreTier = context.scoreTier;
+  return getPatternById(fallbackId);
+}
+
+function getCandidatePool(
+  state: GameState,
+  context: GeneratorContext
+): RoutePattern[] {
+  const previousId = state.terrainGenerator.currentPatternId;
+  const previous = ROUTE_PATTERNS.find((pattern) => pattern.id === previousId);
+  const preferred = previous?.preferredNextPatterns
+    ? getPatternsById(previous.preferredNextPatterns)
+    : [];
+
+  const allowed = ROUTE_PATTERNS.filter((pattern) => {
+    if (pattern.difficulty === "hard" && context.difficultyTier < 2) return false;
+    if (pattern.difficulty === "medium" && context.difficultyTier < 1) {
+      return pattern.id === "obstacle-reward" || pattern.id === "ring-gate";
+    }
+    if (pattern.difficulty === "hard" && state.terrainGenerator.hardStreak >= G.hardStreakLimit) {
+      return false;
+    }
+    return true;
+  });
+
+  const preferredAllowed = preferred.filter((pattern) => allowed.includes(pattern));
+  const remaining = allowed.filter((pattern) => !preferredAllowed.includes(pattern));
+  return [...preferredAllowed, ...remaining];
+}
+
+function countPreferredCandidates(state: GameState, candidates: RoutePattern[]): number {
+  const previous = ROUTE_PATTERNS.find(
+    (pattern) => pattern.id === state.terrainGenerator.currentPatternId
+  );
+  if (!previous?.preferredNextPatterns) return 0;
+  return candidates.filter((candidate) =>
+    previous.preferredNextPatterns?.includes(candidate.id)
+  ).length;
+}
+
+function validatePatternPlacement(
+  pattern: RoutePattern,
+  context: GeneratorContext,
+  state: GameState
+): { valid: true } | { valid: false; reason: string } {
+  if (!pattern.hasSafePath) {
+    return { valid: false, reason: "no safe survival path" };
+  }
+
+  if (context.tail.endY < TERRAIN_Y_MIN || context.tail.endY > TERRAIN_Y_MAX) {
+    return { valid: false, reason: "entry terrain outside camera bounds" };
+  }
+
+  if (!isDifficultyAllowed(pattern, context, state)) {
+    return { valid: false, reason: `difficulty ${pattern.difficulty} not allowed yet` };
+  }
+
+  if (pattern.minEntrySpeed > context.estimatedEntrySpeed + 80) {
+    return {
+      valid: false,
+      reason: `entry speed ${Math.round(context.estimatedEntrySpeed)} < ${pattern.minEntrySpeed}`,
+    };
+  }
+
+  const validation = pattern.validation;
+  if (!validation) return { valid: true };
+
+  for (const gap of validation.safeGaps ?? []) {
+    if (gap > context.safeJumpDistance) {
+      return {
+        valid: false,
+        reason: `safe gap ${Math.round(gap)} > ${Math.round(context.safeJumpDistance)}`,
+      };
+    }
+  }
+
+  for (const gap of validation.riskGaps ?? []) {
+    if (gap > context.riskJumpDistance) {
+      return {
+        valid: false,
+        reason: `risk gap ${Math.round(gap)} > ${Math.round(context.riskJumpDistance)}`,
+      };
+    }
+  }
+
+  for (const gap of validation.rampGaps ?? []) {
+    if (gap > context.rampJumpDistance) {
+      return {
+        valid: false,
+        reason: `ramp gap ${Math.round(gap)} > ${Math.round(context.rampJumpDistance)}`,
+      };
+    }
+  }
+
+  if (
+    typeof validation.upperLedgeHeight === "number" &&
+    validation.upperLedgeHeight > context.maxJumpHeight * G.upperLedgeReachSafety
+  ) {
+    return {
+      valid: false,
+      reason: `ledge ${Math.round(validation.upperLedgeHeight)} too high`,
+    };
+  }
+
+  if (
+    typeof validation.minLandingWidth === "number" &&
+    validation.minLandingWidth < G.minimumLandingWidth
+  ) {
+    return {
+      valid: false,
+      reason: `landing ${Math.round(validation.minLandingWidth)} too short`,
+    };
+  }
+
+  if (
+    typeof validation.firstObstacleAfterLanding === "number" &&
+    validation.firstObstacleAfterLanding < Math.max(
+      G.blindLandingObstacleBuffer,
+      context.estimatedEntrySpeed * G.reactionTimeSeconds
+    )
+  ) {
+    return {
+      valid: false,
+      reason: `blind obstacle ${Math.round(validation.firstObstacleAfterLanding)}px`,
+    };
+  }
+
+  return { valid: true };
+}
+
+function isDifficultyAllowed(
+  pattern: RoutePattern,
+  context: GeneratorContext,
+  state: GameState
+): boolean {
+  if (pattern.difficulty === "hard") {
+    return context.difficultyTier >= 2 && state.terrainGenerator.hardStreak < G.hardStreakLimit;
+  }
+
+  if (pattern.difficulty === "medium") {
+    return context.difficultyTier >= 1 ||
+      pattern.id === "obstacle-reward" ||
+      pattern.id === "ring-gate";
+  }
+
+  return true;
+}
+
+function buildGeneratorContext(
+  state: GameState,
+  tail: TerrainSegment
+): GeneratorContext {
+  const scoreTier = Math.floor(state.score / G.scoreTierSize);
+  const distanceTier = Math.floor(tail.endX / G.difficultyDistanceTierLength);
+  const difficultyTier = Math.max(scoreTier, distanceTier);
+  const estimatedEntrySpeed = estimateEntrySpeedAtTail(state, tail.endX);
+  const safeJump = estimateJumpReach(P.maxSpeed * G.safeJumpSpeedRatio, "jump");
+  const riskJump = estimateJumpReach(P.maxSpeed * G.riskJumpSpeedRatio, "jump");
+  const rampJump = estimateJumpReach(Math.max(estimatedEntrySpeed, P.maxSpeed * 0.55), "ramp");
+  const maxJumpVelocity = J.baseVelocity + J.speedBonus * G.riskJumpSpeedRatio;
+  const maxJumpHeight = (maxJumpVelocity * maxJumpVelocity) / (2 * J.gravity);
+
+  return {
+    tail,
+    scoreTier,
+    distanceTier,
+    difficultyTier,
+    estimatedEntrySpeed,
+    safeJumpDistance: safeJump.distance,
+    riskJumpDistance: riskJump.distance,
+    rampJumpDistance: rampJump.distance,
+    maxJumpHeight,
+  };
+}
+
+function estimateEntrySpeedAtTail(state: GameState, tailX: number): number {
+  const playerWorldX = state.worldOffset + state.player.x;
+  const runway = Math.max(0, tailX - playerWorldX);
+  const baselineSpeed = Math.max(state.player.speed, P.startSpeed, P.maxSpeed * 0.32);
+  const accelerationTime = Math.min(3.2, runway / Math.max(180, baselineSpeed));
+  return Math.min(P.maxSpeed, baselineSpeed + P.acceleration * accelerationTime);
+}
+
+function estimateJumpReach(
+  speed: number,
+  launchType: "jump" | "ramp"
+): { distance: number; airtime: number } {
+  const speedRatio = Math.max(0, Math.min(1, speed / P.maxSpeed));
+  const verticalVelocity = launchType === "ramp"
+    ? T.rampLaunchVelocity + T.rampSpeedLaunchBonus * speedRatio
+    : J.baseVelocity + J.speedBonus * speedRatio;
+  const airtime = (2 * verticalVelocity) / J.gravity;
+  const margin = launchType === "ramp" ? G.rampSafetyMargin : G.jumpSafetyMargin;
+  return {
+    distance: speed * airtime * margin,
+    airtime,
+  };
+}
+
+function recordPatternPlacement(state: GameState, pattern: RoutePattern): void {
+  const generator = state.terrainGenerator;
+  generator.currentPatternId = pattern.id;
+  generator.currentPatternDifficulty = pattern.difficulty;
+  generator.currentScoreTier = Math.floor(state.score / G.scoreTierSize);
+  generator.recentPatternIds = [pattern.id, ...generator.recentPatternIds]
+    .slice(0, G.debugHistorySize);
+  generator.hardStreak = pattern.difficulty === "hard"
+    ? generator.hardStreak + 1
+    : 0;
+  generator.lastWasRecovery = pattern.difficulty === "recovery";
+}
+
+function getPatternById(id: string): RoutePattern {
+  const pattern = ROUTE_PATTERNS.find((candidate) => candidate.id === id);
+  if (!pattern) throw new Error(`Missing terrain pattern: ${id}`);
+  return pattern;
+}
+
+function getPatternsById(ids: string[]): RoutePattern[] {
+  return ids.map(getPatternById);
+}
+
+function stableSeedHash(seed: string): number {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i += 1) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
 // ─── Route pattern library ───────────────────────────────────────────────────
 
 function buildSafeFlatPattern(
@@ -279,7 +696,7 @@ function buildUpperLedgePattern(
   });
 
   const topLanding = addSegment(state, "flat-platform", topRamp.endX + 96, upperY3, {
-    length: 170,
+    length: 190,
     route: "upper",
     surfaceKind: "platform",
     riskLevel: 3,
@@ -334,6 +751,50 @@ function buildRampArcPattern(
     route: "main",
     surfaceKind: "ground",
   });
+}
+
+function buildRingGatePattern(
+  state: GameState,
+  startX: number,
+  startY: number
+): TerrainSegment {
+  const runway = addSegment(state, "flat", startX, startY, {
+    length: 320,
+    route: "main",
+    surfaceKind: "ground",
+  });
+  const ramp = addSegment(state, "small-ramp", runway.endX, runway.endY, {
+    length: 190,
+    route: "main",
+    surfaceKind: "ground",
+    riskLevel: 1,
+    riskLabel: "RING LINE",
+  });
+  const landing = addSegment(state, "flat-platform", ramp.endX, ramp.endY, {
+    length: 360,
+    route: "main",
+    surfaceKind: "platform",
+  });
+  addEnergyRing(state, ramp.endX + 110, ramp.endY - 88);
+  const returnSlope = addSegment(state, "downhill", landing.endX, landing.endY, {
+    length: 150,
+    endY: startY,
+    route: "main",
+    surfaceKind: "ground",
+  });
+  return addSegment(state, "flat", returnSlope.endX, returnSlope.endY, {
+    length: 160,
+    route: "main",
+    surfaceKind: "ground",
+  });
+}
+
+function buildDownhillPumpPattern(
+  state: GameState,
+  startX: number,
+  startY: number
+): TerrainSegment {
+  return buildRedDropPattern(state, startX, startY);
 }
 
 function buildRedDropPattern(

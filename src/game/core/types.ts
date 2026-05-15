@@ -1,5 +1,7 @@
 export type GamePhase = "idle" | "playing" | "gameOver";
 
+export type TerrainPatternDifficulty = "easy" | "medium" | "hard" | "recovery";
+
 export type AudioEventName =
   | "jump"
   | "landing"
@@ -80,6 +82,17 @@ export interface TerrainSegment {
   obstacle?: TerrainObstacle;
 }
 
+export interface TerrainGeneratorState {
+  seed: string;
+  currentPatternId: string;
+  currentPatternDifficulty: TerrainPatternDifficulty;
+  currentScoreTier: number;
+  recentPatternIds: string[];
+  rejectedPatternReason: string;
+  hardStreak: number;
+  lastWasRecovery: boolean;
+}
+
 export interface OverclockToken {
   id: number;
   worldX: number;
@@ -131,6 +144,7 @@ export interface GameState {
   terrainSegments: TerrainSegment[];
   nextTerrainSegmentId: number;
   terrainPatternIndex: number;
+  terrainGenerator: TerrainGeneratorState;
   nextObstacleId: number;
 
   // Scoring
