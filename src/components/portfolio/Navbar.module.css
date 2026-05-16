@@ -61,6 +61,24 @@
   background: rgba(99, 102, 241, 0.07);
 }
 
+.websiteLink {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--indigo);
+  text-decoration: none;
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  border: 1px solid rgba(79, 70, 229, 0.38);
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.websiteLink:hover {
+  background: rgba(99, 102, 241, 0.07);
+  border-color: var(--indigo);
+  color: var(--indigo);
+}
+
 .playBtn {
   display: inline-flex;
   align-items: center;
@@ -134,6 +152,25 @@
 .mobileLink:hover {
   color: var(--text);
   background: rgba(99, 102, 241, 0.07);
+}
+
+.mobileWebsiteLink {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--indigo);
+  text-decoration: none;
+  padding: 0.65rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid rgba(79, 70, 229, 0.3);
+  text-align: center;
+  transition: background 0.15s, border-color 0.15s;
+  margin-top: 0.1rem;
+}
+
+.mobileWebsiteLink:hover {
+  background: rgba(99, 102, 241, 0.06);
+  border-color: var(--indigo);
+  color: var(--indigo);
 }
 
 .mobilePlayBtn {

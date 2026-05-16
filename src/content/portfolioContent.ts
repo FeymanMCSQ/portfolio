@@ -7,12 +7,19 @@ export const hero = {
     "I build full-stack web apps, interactive tools, and polished browser-based experiences with a focus on clarity, systems thinking, and user experience.",
 };
 
-export const navLinks = [
-  { label: "Projects", href: "#projects" },
-  { label: "Skills", href: "#skills" },
-  { label: "Runtime Rush", href: "#runtime-rush" },
-  { label: "About", href: "#about" },
-  { label: "Contact", href: "#contact" },
+export interface NavLink {
+  label: string;
+  href: string;
+  featured?: boolean;
+}
+
+export const navLinks: NavLink[] = [
+  { label: "Projects", href: "/#projects" },
+  { label: "Skills", href: "/#skills" },
+  { label: "Runtime Rush", href: "/#runtime-rush" },
+  { label: "About", href: "/#about" },
+  { label: "Contact", href: "/#contact" },
+  { label: "Business Websites", href: "/websites", featured: true },
 ];
 
 export type ProjectStatus = "LIVE" | "IN PROGRESS" | "CASE STUDY";
@@ -250,4 +257,130 @@ export const contact = {
   linkedin: "https://www.linkedin.com/in/safi-ullah-80a4912ba",
   resume: "/Safi_Ullah_Project_Based_Resume.pdf",
   cta: "Available for internships, software engineering opportunities, and selected freelance projects.",
+};
+
+export const websiteServices = {
+  demos: [
+    {
+      id: "harbourline",
+      name: "Harbourline Electrical",
+      description:
+        "A trades website designed for calls, quote requests, trust signals, emergency services, and local service areas.",
+      url: "https://website-demo-1-one.vercel.app/",
+    },
+    {
+      id: "northbridge",
+      name: "Northbridge Legal",
+      description:
+        "A boutique law firm concept focused on credibility, practice areas, consultation bookings, and calm professional trust.",
+      url: "https://demo-website-2.vercel.app/",
+    },
+    {
+      id: "parramatta",
+      name: "Parramatta Physio & Rehab",
+      description:
+        "A clinic website focused on appointment booking, reassurance, service clarity, and a warm healthcare experience.",
+      url: "https://demo-website-3-omega.vercel.app/",
+    },
+  ],
+  audiences: [
+    {
+      label: "Trades & local services",
+      description:
+        "Plumbers, electricians, builders, cleaners, and other local service providers who need a professional presence online.",
+    },
+    {
+      label: "Consultants & professional services",
+      description:
+        "Accountants, lawyers, financial advisers, coaches, and consultants who need a credible online home.",
+    },
+    {
+      label: "Clinics & appointment-based businesses",
+      description:
+        "Physiotherapists, dentists, psychologists, GPs, and allied health professionals.",
+    },
+    {
+      label: "Startups and small teams",
+      description:
+        "New ventures and small businesses that need a professional online presence to get started.",
+    },
+  ],
+  included: [
+    "Website planning and structure",
+    "Custom design",
+    "Responsive development",
+    "Basic SEO setup",
+    "Google Search Console and sitemap setup",
+    "Contact forms and lead capture",
+    "CMS/editability where needed",
+    "Launch and deployment",
+    "Bug fixes and post-launch support",
+  ],
+  process: [
+    {
+      step: 1,
+      title: "Discovery and content",
+      description:
+        "We clarify your goals, services, and audience. You provide your content and assets — I'll guide you through what's needed.",
+    },
+    {
+      step: 2,
+      title: "Site structure and design",
+      description: "I plan the page layout and visual design suited to your business and audience.",
+    },
+    {
+      step: 3,
+      title: "Development and mobile polish",
+      description:
+        "I build the site with clean code and test across devices and screen sizes.",
+    },
+    {
+      step: 4,
+      title: "SEO setup and launch",
+      description:
+        "I handle Google Search Console, sitemap, meta setup, and full deployment.",
+    },
+    {
+      step: 5,
+      title: "Support and fixes",
+      description:
+        "I'm available for bug fixes and technical issues after launch.",
+    },
+  ],
+  pricing: {
+    starter: "Starter websites from $2,500.",
+    range: "Most complete small-business websites range from $3,500–$5,500.",
+    note: "Final price depends on number of pages, content readiness, design complexity, CMS needs, and integrations.",
+    timeline: "2–3 weeks from receiving content.",
+  },
+  faq: [
+    {
+      q: "How long does a website take?",
+      a: "Most projects complete within 2–3 weeks from the date I receive your content and assets.",
+    },
+    {
+      q: "What do I need to provide?",
+      a: "Your business information, services, any copy you want on the site, a logo or branding if you have it, and photos if available. I'll guide you through exactly what's needed.",
+    },
+    {
+      q: "Can I edit the website myself?",
+      a: "Yes, if you need a CMS. I'll set this up as part of the project so you can update text and images without developer help.",
+    },
+    {
+      q: "Do you handle hosting and launch?",
+      a: "Yes. I set up hosting, connect your domain, and handle the full deployment process.",
+    },
+    {
+      q: "Is SEO included?",
+      a: "Basic on-page SEO is included: page titles, meta descriptions, sitemap, and Google Search Console setup. Ongoing SEO campaigns are not included.",
+    },
+    {
+      q: "Do you build web apps?",
+      a: "No. I focus on business websites — service pages, contact forms, and booking integration. Complex web applications, SaaS platforms, or software products are not what I offer here.",
+    },
+    {
+      q: "What happens after launch?",
+      a: "I'm available for bug fixes and technical issues after launch. Ongoing maintenance or major additions are handled as separate work.",
+    },
+  ],
 };

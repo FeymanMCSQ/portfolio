@@ -17,13 +17,22 @@ export function Navbar() {
         </Link>
 
         <ul className={s.links} role="list">
-          {navLinks.map((link) => (
-            <li key={link.href}>
-              <a href={link.href} className={s.link}>
-                {link.label}
-              </a>
-            </li>
-          ))}
+          {navLinks.map((link) => {
+            const className = link.featured ? s.websiteLink : s.link;
+            return (
+              <li key={link.href}>
+                {link.href.startsWith("/") && !link.href.startsWith("/#") ? (
+                  <Link href={link.href} className={className}>
+                    {link.label}
+                  </Link>
+                ) : (
+                  <a href={link.href} className={className}>
+                    {link.label}
+                  </a>
+                )}
+              </li>
+            );
+          })}
           <li>
             <Link href="/play" className={s.playBtn}>
               Play Game ↗
@@ -49,16 +58,28 @@ export function Navbar() {
         className={`${s.mobileMenu} ${open ? s.open : ""}`}
         aria-hidden={!open}
       >
-        {navLinks.map((link) => (
-          <a
-            key={link.href}
-            href={link.href}
-            className={s.mobileLink}
-            onClick={() => setOpen(false)}
-          >
-            {link.label}
-          </a>
-        ))}
+        {navLinks.map((link) => {
+          const className = link.featured ? s.mobileWebsiteLink : s.mobileLink;
+          return link.href.startsWith("/") && !link.href.startsWith("/#") ? (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={className}
+              onClick={() => setOpen(false)}
+            >
+              {link.label}
+            </Link>
+          ) : (
+            <a
+              key={link.href}
+              href={link.href}
+              className={className}
+              onClick={() => setOpen(false)}
+            >
+              {link.label}
+            </a>
+          );
+        })}
         <Link
           href="/play"
           className={s.mobilePlayBtn}
