@@ -348,9 +348,9 @@ export const websiteServices = {
     },
   ],
   pricing: {
-    starter: "Starter websites from $2,500.",
-    range: "Most complete small-business websites range from $3,500–$5,500.",
-    note: "Final price depends on number of pages, content readiness, design complexity, CMS needs, and integrations.",
+    starter: "Starter websites begin at $2,500.",
+    range: "Most small-business websites fall between $3,000–$4,500, depending on page count, content readiness, design complexity, CMS needs, and integrations.",
+    note: "Larger custom builds, ecommerce, booking systems, dashboards, client portals, or web applications are quoted separately from $5,000+.",
     timeline: "2–3 weeks from receiving content.",
   },
   faq: [
